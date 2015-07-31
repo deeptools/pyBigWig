@@ -11,6 +11,10 @@ You can install this extension directly from github with:
 # Usage
 Basic usage is as follows:
 
+## A note on coordinates
+
+Wiggle and BigWig files use 0-based half-open coordinates, which are also used by this extension. So to access the value for the first base on `chr1`, one would specify the starting position as `0` and the end position as `1`. Similarly, bases 100 to 115 would have a start of `99` and an end of `115`. This is simply for the sake of consistency with the underlying bigWig file and may change in the future.
+
 ## Load the extension
 
     >>> import pyBigWig
