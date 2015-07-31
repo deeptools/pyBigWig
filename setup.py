@@ -1,6 +1,5 @@
 from distutils.core import setup, Extension
 import subprocess
-import platform
 import glob
 
 srcs = [x for x in 
