@@ -1,7 +1,7 @@
 # pyBigWig
 A python extension written in C for quick access to bigWig files. This extension uses the C library functions written by Jim Kent, which have a separate license but are none-the-less available for everyone to use (including for commercial use).
 
-This extension is still under development and the functions may change. In particular, support for writing a bigWig file has yet to be added.
+This extension is still under development and the functions may change. In particular, support for writing a bigWig file has yet to be added. Note that compiling with `-O2` or `-O1` seems to result in errors, while `-O0` and `-O3` work fine. The cause of this is currently unclear.
 
 # Installation
 You can install this extension directly from github with:
@@ -21,7 +21,9 @@ Wiggle and BigWig files use 0-based half-open coordinates, which are also used b
 
 ## Open a bigWig file
 
-    >>> bw = pyBigWig.open("file.bw")
+This will work if your working directory is the pyBigWig source code directory.
+
+    >>> bw = pyBigWig.open("test/test.bw")
 
 Note that if the file doesn't exist you'll see an error message and `None` will be returned.
 
@@ -30,14 +32,14 @@ Note that if the file doesn't exist you'll see an error message and `None` will 
 `bigWigFile` objects contain a dictionary holding the chromosome lengths, which can be accessed with the `chroms()` accessor.
 
     >>> bw.chroms()
-    dict_proxy({'chrX': 155270560L, 'chr13': 115169878L, 'chr12': 133851895L, 'chr11': 135006516L, 'chr10': 135534747L, 'chr17': 81195210L, 'chr16': 90354753L, 'chr15': 102531392L, 'chr14': 107349540L, 'chr19': 59128983L, 'chr18': 78077248L, 'chr22': 51304566L, 'chr20': 63025520L, 'chr21': 48129895L, 'chr7': 159138663L, 'chr6': 171115067L, 'chr5': 180915260L, 'chr4': 191154276L, 'chr3': 198022430L, 'chr2': 243199373L, 'chr1': 249250621L, 'chr9': 141213431L, 'chr8': 146364022L})
+    dict_proxy({'1': 195471971L, '10': 130694993L})
 
 You can also directly query a particular chromosome.
 
-    >>> bw.chroms("chr2")
-    243199373L
+    >>> bw.chroms("1")
+    195471971L
 
-The lengths are stored a the "long" integer type, which is why there's an `L? suffix. If you specify a non-existant chromosome then nothing is output.
+The lengths are stored a the "long" integer type, which is why there's an `L` suffix. If you specify a non-existant chromosome then nothing is output.
 
     >>> bw.chroms("c")
     >>> 
@@ -46,24 +48,35 @@ The lengths are stored a the "long" integer type, which is why there's an `L? su
 
 BigWig files are used to store values associated with positions and ranges of them. Typically we want to quickly access the average value over a range, which is very simple:
 
-    >>> bw.values("chr2", 1000000, 2000000)
-    [2.960610510599166]
+    >>> bw.stats("1", 0, 3)
+    [0.2000000054637591]
 
 Suppose instead of the mean value, we instead wanted the maximum value:
 
-    >>> bw.values("chr2", 1000000, 2000000, type="max")
-    [53.0]
+    >>> bw.stats("1", 0, 3, type="max")
+    [0.30000001192092896]
 
 Other options are "min" (the minimum value), "coverage" (the fraction of bases covered), and "std" (the standard deviation of the values).
 
 It's often the case that we would instead like to compute values of some number of evenly spaced bins in a given interval, which is also simple:
 
-    >>> bw.values("chr2", 1000000, 2000000, type="std", nBins=5)
-    [2.046074329512312, 2.261047665458866, 1.8803398932488133, 2.199727647726934, 2.530289082567373]
+    >>> bw.stats("1",99,200, type="max", nBins=2)
+    [1.399999976158142, 1.5]
 
 `nBins` defaults to 1, just as `type` defaults to `mean`.
+
+## Retrieve values for individual bases in a range
+
+While the `stats()` method **can** be used to retrieve the original values for each base (e.g., by setting `nBins` to the number of bases), it's preferable to instead use the `values()` accessor.
+
+    >>> bw.values("1", 0, 3)
+    [0.10000000149011612, 0.20000000298023224, 0.30000001192092896]
+
+The list produced will always contain one value for every base in the range specified. If a particular base has no associated value in the bigWig file then the returned value will be `None`.
+
+    >>> bw.values("1", 0, 4)
+    [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]
 
 ## Close a bigWig file
 
 A file can be closed with a simple `bw.close()`, as is commonly done with other file types.
-

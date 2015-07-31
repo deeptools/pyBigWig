@@ -110,8 +110,20 @@ static PyObject *bwGetChroms(bigWigFile_t *self, PyObject *args) {
     return ret;
 }
 
-//Fetch a value or values for a single range
-static PyObject *bwGetValRange(bigWigFile_t *self, PyObject *args, PyObject *kwds) {
+int bwType2Int(char *type) {
+    if(!type) return 0;
+    if(strcmp("mean",type) == 0) return 0;
+    if(strcmp("max", type) == 0) return 1;
+    if(strcmp("min", type) == 0) return 2;
+    if(strcmp("coverage", type) == 0) return 3;
+    if(strcmp("std", type) == 0) return 4;
+    printf("Unknown type: %s\n", type);
+    return -1;
+}
+
+//Fetch summary statistics
+//To do: Make start and end optional
+static PyObject *bwGetStats(bigWigFile_t *self, PyObject *args, PyObject *kwds) {
     double *val;
     uint32_t start, end;
     static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", NULL};
@@ -125,7 +137,12 @@ static PyObject *bwGetValRange(bigWigFile_t *self, PyObject *args, PyObject *kwd
     }
     if(!nBins) nBins = 1; //For some reason, not specifying this overrides the default!
 
-    iType = bbiSummaryTypeFromString(type);
+    iType = bwType2Int(type);
+    if(iType == -1) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
     val = malloc(nBins*sizeof(double));
     for(i=0; i<nBins; i++) val[i] = strtod("NaN", NULL);
 
@@ -143,12 +160,53 @@ static PyObject *bwGetValRange(bigWigFile_t *self, PyObject *args, PyObject *kwd
     return ret;
 }
 
+//Fetch a list of individual values
+//To do: make start and end optional
+//For bases with no coverage, the value should be None
+static PyObject *bwGetValues(bigWigFile_t *self, PyObject *args) {
+    int i;
+    uint32_t start, end;
+    char *chrom = NULL;
+    PyObject *ret;
+    struct bbiInterval *cur = NULL;
+    struct lm *lmem = NULL;
+
+    if(!PyArg_ParseTuple(args, "skk", &chrom, &start, &end)) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else if(!chrom) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    lmem = lmInit(0);
+    if(!lmem) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    cur = bigWigIntervalQuery(self->bbi, chrom, start, end, lmem);
+    if(!cur) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    ret = PyList_New(end-start);
+    for(i=0; i<end-start; i++) PyList_SetItem(ret, i, Py_None);
+    while(cur) {
+        for(i=cur->start; i<cur->end; i++) {
+            PyList_SetItem(ret, i-start, PyFloat_FromDouble(cur->val));
+        }
+        cur = cur->next;
+    }
+    lmCleanup(&lmem);
+
+    Py_INCREF(ret);
+    return ret;
+}
+
 PyMODINIT_FUNC initpyBigWig(void) {
     if(PyType_Ready(&bigWigFile) < 0) return;
 
-    PyObject *mod = Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
-    if(!mod) return;
-
-    Py_INCREF(&bigWigFile);
-    PyModule_AddObject(mod, "bigWigFile", (PyObject*)&bigWigFile);
+    Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
 }

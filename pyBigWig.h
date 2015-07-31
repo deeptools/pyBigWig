@@ -11,9 +11,8 @@ typedef struct {
 static PyObject* bwOpen(PyObject *self, PyObject *pyFname);
 static PyObject* bwClose(bigWigFile_t *bbi, PyObject *args);
 static PyObject *bwGetChroms(bigWigFile_t *bbi, PyObject *args);
-static PyObject *bwGetValRange(bigWigFile_t *bbi, PyObject *args, PyObject *kwds);
-//static PyObject *bwGetValRange(bigWigFile_t *bbi, PyObject *args);
-PyObject *printBW(PyObject *o);
+static PyObject *bwGetStats(bigWigFile_t *bbi, PyObject *args, PyObject *kwds);
+static PyObject *bwGetValues(bigWigFile_t *bbi, PyObject *args);
 static void bwDealloc(bigWigFile_t *bbi);
 
 //The function types aren't actually correct...
@@ -45,10 +44,9 @@ Returns:\n\
     A list of chromosome lengths or a dictionary of them.\n\
 \n\
 >>> import pyBigWig\n\
->>> bw = pyBigWig.open(\"some_file.bw\")\n\
+>>> bw = pyBigWig.open(\"test/test.bw\")\n\
 >>> bw.chroms()\n\
-'1': 195471971L, 'GL456389.1': 28772L, '3': 160039680L, '2': 182113224L,\n\
-...\n\
+{'1': 195471971L, '10': 130694993L}\n\
 \n\
 Note that you may optionally supply a specific chromosome:\n\
 \n\
@@ -59,8 +57,8 @@ If you specify a non-existant chromosome then no output is produced:\n\
 \n\
 >>> bw.chroms(\"foo\")\n\
 >>>\n"},
-    {"values", (PyCFunction)bwGetValRange, METH_VARARGS|METH_KEYWORDS,
-"Return summary values for a given range.\n\
+    {"stats", (PyCFunction)bwGetStats, METH_VARARGS|METH_KEYWORDS,
+"Return summary statistics for a given range.\n\
 \n\
 Positional arguments:\n\
     chr:   Chromosome name\n\
@@ -73,36 +71,55 @@ Keyword arguments:\n\
            summary statistics, default 1.\n\
 \n\
 >>> import pyBigWig\n\
->>> bw = pyBigWig.open(\"some_file.bw\")\n\
->>> bw.values(\"chr1\", 1000000, 2000000)\n\
-[17.7491145717263]\n\
+>>> bw = pyBigWig.open(\"test/test.bw\")\n\
+>>> bw.stats(\"1\", 0, 3)\n\
+[0.2000000054637591]\n\
 \n\
-This is the mean value over the range chr1:1000000-2000000. There are additional\n\
-optional parameters 'type' and 'nBins'. 'type' specifies the type of summary\n\
-information to calculate, which is 'mean' by default. Other possibilites for\n\
-'type' are: 'min' (minimum value), 'max' (maximum value), 'coverage' (number of\n\
-covered bases), and 'std' (standard deviation). 'nBins' defines how many bins\n\
+This is the mean value over the range 1:1-3 (in 1-based coordinates). There are\n\
+additional optional parameters 'type' and 'nBins'. 'type' specifies the type of\n\
+summary information to calculate, which is 'mean' by default. Other possibilites\n\
+for 'type' are: 'min' (minimum value), 'max' (maximum value), 'coverage' (number\n\
+of covered bases), and 'std' (standard deviation). 'nBins' defines how many bins\n\
 the region will be divided into and defaults to 1.\n\
 \n\
->>> bw.values(\"chr1\", 1000000, 2000000, type=\"min\")\n\
-[1.0]\n\
->>> bw.values(\"chr1\", 1000000, 2000000, type=\"max\")\n\
-[2707.0]\n\
->>> bw.values(\"chr1\", 1000000, 2000000, type=\"coverage\")\n\
-[0.878054]\n\
->>> bw.values(\"chr1\", 1000000, 2000000, type=\"std\")\n\
-[87.55780895322955]\n\
->>> bw.values(\"chr1\", 1000000, 2000000, type=\"coverage\", nBins=5)\n\
-[0.932795, 0.9187200000000001, 0.8186000000000001, 0.78622, 0.9180900000000001]\n\
->>> bw.values(\"chr1\", 1000000, 2000000, nBins=5)\n\
-[17.354876630539948, 23.50821450484022, 18.657274436073084, 14.496840947098928, 14.572063763860072]\n"},
+>>> bw.stats(\"1\", 0, 3, type=\"min\")\n\
+[0.10000000149011612]\n\
+>>> bw.stats(\"1\", 0, 3, type=\"max\")\n\
+[0.30000001192092896]\n\
+>>> bw.stats(\"1\", 0, 10, type=\"coverage\")\n\
+[0.30000000000000004]\n\
+>>> bw.stats(\"1\", 0, 3, type=\"std\")\n\
+[0.10000000521540645]\n\
+>>> bw.stats(\"1\",99,200, type=\"max\", nBins=2)\n\
+[1.399999976158142, 1.5]\n"},
+    {"values", (PyCFunction)bwGetValues, METH_VARARGS,
+"Retrieve the value stored for each position (or None)\n\
+\n\
+Positional arguments:\n\
+    chr:   Chromosome name\n\
+    start: Starting position\n\
+    end:   Ending position\n\
+\n\
+>>> import pyBigWig\n\
+>>> bw = pyBigWig.open(\"test/test.bw\")\n\
+>>> bw.values(\"1\", 0, 3)\n\
+[0.10000000149011612, 0.20000000298023224, 0.30000001192092896]\n\
+\n\
+The length of the returned list will always match the length of the range. Any\n\
+uncovered bases will have a value of None.\n\
+\n\
+>>> bw.values(\"1\", 0, 4)\n\
+[0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]\n\
+\n"},
     {NULL, NULL, 0, NULL}
 };
 
+/*
 static PyMemberDef bwMembers[] = {
     {"chroms", T_OBJECT_EX, offsetof(bigWigFile_t, chroms), READONLY, "A dictionary with chromosomes as keys and chromosome lengths as values"},
     {NULL}
 };
+*/
 
 //Should set tp_dealloc, tp_print, tp_repr, tp_str, tp_members
 static PyTypeObject bigWigFile = {
@@ -132,7 +149,7 @@ static PyTypeObject bigWigFile = {
     0,
     0,
     bwMethods,                 /*tp_methods*/
-    bwMembers,                 /*tp_members*/
+    0,                         /*tp_members*/
     0,                         /*tp_getset*/
     0,                         /*tp_base*/
     0,                         /*tp_dict*/
