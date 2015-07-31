@@ -55,7 +55,7 @@ Other options are "min" (the minimum value), "coverage" (the fraction of bases c
 It's often the case that we would instead like to compute values of some number of evenly spaced bins in a given interval, which is also simple:
 
     >>> bw.values("chr2", 1000000, 2000000, type="std", nBins=5)
-   [2.046074329512312, 2.261047665458866, 1.8803398932488133, 2.199727647726934, 2.530289082567373]
+    [2.046074329512312, 2.261047665458866, 1.8803398932488133, 2.199727647726934, 2.530289082567373]
 
 `nBins` defaults to 1, just as `type` defaults to `mean`.
 
