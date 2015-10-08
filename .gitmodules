@@ -1,0 +1,3 @@
+[submodule "libBigWig"]
+	path = libBigWig
+	url = https://github.com/dpryan79/libBigWig.git

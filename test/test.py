@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import pyBigWig
-#bw = pyBigWig.open("test/test.bw")
-bw = pyBigWig.open("https://raw.githubusercontent.com/dpryan79/pyBigWig/master/test/test.bw")
+bw = pyBigWig.open("test/test.bw")
+#bw = pyBigWig.open("https://raw.githubusercontent.com/dpryan79/pyBigWig/master/test/test.bw")
 print(bw.chroms())
 print(bw.chroms("1"))
 print(bw.chroms("c"))

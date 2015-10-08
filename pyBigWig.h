@@ -4,20 +4,19 @@
 
 typedef struct {
     PyObject_HEAD
-    struct bbiFile *bbi;
-    PyObject *chroms; //A chromosome: length dictionary
-} bigWigFile_t;
+    bigWigFile_t *bw;
+} pyBigWigFile_t;
 
-static PyObject* bwOpen(PyObject *self, PyObject *pyFname);
-static PyObject* bwClose(bigWigFile_t *bbi, PyObject *args);
-static PyObject *bwGetChroms(bigWigFile_t *bbi, PyObject *args);
-static PyObject *bwGetStats(bigWigFile_t *bbi, PyObject *args, PyObject *kwds);
-static PyObject *bwGetValues(bigWigFile_t *bbi, PyObject *args);
-static void bwDealloc(bigWigFile_t *bbi);
+static PyObject* pyBwOpen(PyObject *self, PyObject *pyFname);
+static PyObject* pyBwClose(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyBwGetChroms(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+//static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
+static void pyBwDealloc(pyBigWigFile_t *pybw);
 
 //The function types aren't actually correct...
 static PyMethodDef bwMethods[] = {
-    {"open", (PyCFunction)bwOpen, METH_VARARGS,
+    {"open", (PyCFunction)pyBwOpen, METH_VARARGS,
 "Open a bigWig file.\n\
 \n\
 Returns:\n\
@@ -28,13 +27,13 @@ Arguments:\n\
 \n\
 >>> import pyBigWig\n\
 >>> bw = pyBigWig.open(\"some_file.bw\")\n"},
-    {"close", (PyCFunction)bwClose, METH_VARARGS,
+    {"close", (PyCFunction)pyBwClose, METH_VARARGS,
 "Close a bigWig file.\n\
 \n\
 >>> import pyBigWig\n\
 >>> bw = pyBigWig.open(\"some_file.bw\")\n\
 >>> bw.close()\n"},
-    {"chroms", (PyCFunction)bwGetChroms, METH_VARARGS,
+    {"chroms", (PyCFunction)pyBwGetChroms, METH_VARARGS,
 "Return a chromosome: length dictionary. The order is typically not alphabetical\n\
 and the lengths are long (thus the 'L' suffix).\n\
 \n\
@@ -57,7 +56,7 @@ If you specify a non-existant chromosome then no output is produced:\n\
 \n\
 >>> bw.chroms(\"foo\")\n\
 >>>\n"},
-    {"stats", (PyCFunction)bwGetStats, METH_VARARGS|METH_KEYWORDS,
+    {"stats", (PyCFunction)pyBwGetStats, METH_VARARGS|METH_KEYWORDS,
 "Return summary statistics for a given range.\n\
 \n\
 Positional arguments:\n\
@@ -92,7 +91,8 @@ the region will be divided into and defaults to 1.\n\
 [0.10000000521540645]\n\
 >>> bw.stats(\"1\",99,200, type=\"max\", nBins=2)\n\
 [1.399999976158142, 1.5]\n"},
-    {"values", (PyCFunction)bwGetValues, METH_VARARGS,
+/*
+    {"values", (PyCFunction)pyBwGetValues, METH_VARARGS,
 "Retrieve the value stored for each position (or None)\n\
 \n\
 Positional arguments:\n\
@@ -111,24 +111,18 @@ uncovered bases will have a value of None.\n\
 >>> bw.values(\"1\", 0, 4)\n\
 [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]\n\
 \n"},
+*/
     {NULL, NULL, 0, NULL}
 };
-
-/*
-static PyMemberDef bwMembers[] = {
-    {"chroms", T_OBJECT_EX, offsetof(bigWigFile_t, chroms), READONLY, "A dictionary with chromosomes as keys and chromosome lengths as values"},
-    {NULL}
-};
-*/
 
 //Should set tp_dealloc, tp_print, tp_repr, tp_str, tp_members
 static PyTypeObject bigWigFile = {
     PyObject_HEAD_INIT(NULL)
     0,              /*ob_size*/
     "pyBigWig.bigWigFile",     /*tp_name*/
-    sizeof(bigWigFile_t),      /*tp_basicsize*/
+    sizeof(pyBigWigFile_t),      /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)bwDealloc,     /*tp_dealloc*/
+    (destructor)pyBwDealloc,     /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
