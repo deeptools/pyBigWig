@@ -17,7 +17,9 @@ PyObject* bwOpen(PyObject *self, PyObject *pyFname) {
     if(!PyArg_ParseTuple(pyFname, "s", &fname)) return NULL;
 
     //Check to ensure that the file exists, since bigWigFileOpen() will crash python if not!
-    if(access(fname, R_OK) == -1) {
+    //This can't be done with remote files, so bigWigFileOpen() will kill python on an error!
+    if(access(fname, R_OK) == -1 && strncmp("https://",fname, 8) != 0 && \
+        strncmp("http://",fname,7)!= 0 && strncmp("ftp://",fname,6) != 0) {
         printf("%s does not exist!\n", fname);
         Py_INCREF(Py_None);
         return Py_None;

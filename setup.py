@@ -14,7 +14,7 @@ module1 = Extension('pyBigWig',
                                      ("_GNU_SOURCE",None),
                                      ("MACHTYPE_x86_64",None),
                                      ("USE_SSL",None)],
-                    extra_compile_args = ["-O3"], #The default -O2 causes issues for some reason
+                    extra_compile_args = ["-O0"], #The default -O2 causes issues for some reason
                     include_dirs = ['kent/src/inc'])
 
 setup (name = 'pyBigWig',
