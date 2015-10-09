@@ -83,7 +83,7 @@ A file can be closed with a simple `bw.close()`, as is commonly done with other 
 
 # To do
 
- - [ ] Properly support remote files.
- - [ ] Either modify Kent's libraries or rewrite key functions to get around it calling `exit()` on errors, since the extension shouldn't ever kill python.
+ - [X] Properly support remote files.
+ - [X] Either modify Kent's libraries or rewrite key functions to get around it calling `exit()` on errors, since the extension shouldn't ever kill python.
  - [ ] Use numpy arrays instead of lists? This requires having numpy installed, which seems rather over the top but Fidel might want this for deeptools.
  - [ ] Writer functions? It's unclear how much these would even be used.

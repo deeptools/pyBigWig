@@ -1,155 +1,126 @@
 #include <Python.h>
 #include <assert.h>
 #include <inttypes.h>
-#include "common.h"
-#include "bigWig.h"
-#include <math.h>
 #include "pyBigWig.h"
 
 //Need to add proper error handling rather than just assert()
-PyObject* bwOpen(PyObject *self, PyObject *pyFname) {
+PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     char *fname = NULL;
-    struct bbiFile *bw;
-    struct bbiChromInfo *ci, *p;
-    PyObject *h, *val;
-    bigWigFile_t *ret;
-    
-    if(!PyArg_ParseTuple(pyFname, "s", &fname)) return NULL;
+    pyBigWigFile_t *pybw;
+    bigWigFile_t *bw = NULL;
 
-    //Check to ensure that the file exists, since bigWigFileOpen() will crash python if not!
-    //This can't be done with remote files, so bigWigFileOpen() will kill python on an error!
-    if(access(fname, R_OK) == -1 && strncmp("https://",fname, 8) != 0 && \
-        strncmp("http://",fname,7)!= 0 && strncmp("ftp://",fname,6) != 0) {
-        printf("%s does not exist!\n", fname);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        if(!(bw = bigWigFileOpen(fname))) {
-            Py_INCREF(Py_None);
-            return Py_None;
-        }
-    }
+    if(!PyArg_ParseTuple(pyFname, "s", &fname)) goto error;
 
-    //Load the chromosome table, which is a linked list (annoyingly)
-    if(!(ci = bbiChromList(bw))) {
-        bigWigFileClose(&bw);
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
+    //Open the local/remote file
+    bw = bwOpen(fname, NULL);
+    if(!bw) goto error;
 
-    //Construct the output object
-    if(!(h = PyDict_New())) {
-        bigWigFileClose(&bw); 
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
-    p = ci;
-    while(p) {
-        val = PyLong_FromUnsignedLong(p->size);
-        if(!val) {
-            printf("[pyBigWig] Couldn't create a python object to hold a chromosome length!\n");
-            goto error;
-        }
-        if(PyDict_SetItemString(h, p->name, val) == -1) { //valgrind complains here
-            printf("[pyBigWig] An error occurred while creating the chroms dictionary!\n");
-            goto error;
-        }
-        Py_DECREF(val);
-        p = p->next;
-    }
-    bbiChromInfoFreeList(&ci);
+    //Convert the chromosome list into a python hash
+    if(!bw->cl) goto error;
 
-    ret = PyObject_New(bigWigFile_t, &bigWigFile);
-    ret->bbi = bw;
-    ret->chroms = h;
-    PyObject_GC_Init((PyObject*) ret);
-    return (PyObject*) ret;
+    pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
+    if(!pybw) goto error;
+    pybw->bw = bw;
+    PyObject_GC_Init((PyObject*) pybw);
+    return (PyObject*) pybw;
 
 error:
-    Py_DECREF(h);
-    Py_XDECREF(val);
-    bbiChromInfoFreeList(&ci);
-    bigWigFileClose(&bw);
+    bwClose(bw);
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-static void bwDealloc(bigWigFile_t *self) {
+static void pyBwDealloc(pyBigWigFile_t *self) {
     PyObject_GC_Fini((PyObject*) self);
-    Py_XDECREF(self->chroms);
-    if(self->bbi) bigWigFileClose(&(self->bbi));
+    if(self->bw) bwClose(self->bw);
     PyObject_DEL(PyObject_AS_GC(self));
 }
 
-static PyObject *bwClose(bigWigFile_t *self, PyObject *args) {
-    bigWigFileClose(&(self->bbi));
-    self->bbi = NULL;
+static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
+    bwClose(self->bw);
+    self->bw = NULL;
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 //Accessor for the chroms, args is optional
-static PyObject *bwGetChroms(bigWigFile_t *self, PyObject *args) {
-    PyObject *ret = Py_None, *h, *s;
+static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
+    PyObject *ret = Py_None, *val;
+    bigWigFile_t *bw = self->bw;
     char *chrom = NULL;
+    uint32_t i;
 
-    if(!(PyArg_ParseTuple(args, "|s", &chrom))) {
-        h = PyDictProxy_New(self->chroms);
-        ret = Py_BuildValue("O",h);
-        Py_DECREF(h);
-    } else if(!chrom) {
-        h = PyDictProxy_New(self->chroms);
-        ret = Py_BuildValue("O",h);
-        Py_DECREF(h);
+    if(!(PyArg_ParseTuple(args, "|s", &chrom)) || !chrom) {
+        ret = PyDict_New();
+        for(i=0; i<bw->cl->nKeys; i++) {
+            val = PyLong_FromUnsignedLong(bw->cl->len[i]);
+            if(PyDict_SetItemString(ret, bw->cl->chrom[i], val) == -1) goto error;
+            Py_DECREF(val);
+        }
     } else {
-        s = PyString_FromString(chrom);
-        if(PyDict_Contains(self->chroms, s))
-            ret = PyDict_GetItemString(self->chroms, chrom);
-        Py_DECREF(s);
+        for(i=0; i<bw->cl->nKeys; i++) {
+            if(strcmp(bw->cl->chrom[i],chrom) == 0) {
+                ret = PyLong_FromUnsignedLong(bw->cl->len[i]);
+                break;
+            }
+        }
     }
 
     Py_INCREF(ret);
     return ret;
+
+error :
+    Py_XDECREF(val);
+    Py_XDECREF(ret);
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
-int bwType2Int(char *type) {
-    if(!type) return 0;
-    if(strcmp("mean",type) == 0) return 0;
-    if(strcmp("max", type) == 0) return 1;
-    if(strcmp("min", type) == 0) return 2;
-    if(strcmp("coverage", type) == 0) return 3;
-    if(strcmp("std", type) == 0) return 4;
-    printf("Unknown type: %s\n", type);
+enum bwStatsType char2enum(char *s) {
+    if(strcmp(s, "mean") == 0) return mean;
+    if(strcmp(s, "std") == 0) return std;
+    if(strcmp(s, "dev") == 0) return dev;
+    if(strcmp(s, "max") == 0) return max;
+    if(strcmp(s, "min") == 0) return min;
+    if(strcmp(s, "cov") == 0) return cov;
+    if(strcmp(s, "coverage") == 0) return cov;
     return -1;
-}
+};
 
-//Fetch summary statistics
-//To do: Make start and end optional
-static PyObject *bwGetStats(bigWigFile_t *self, PyObject *args, PyObject *kwds) {
+//Fetch summary statistics, default is the mean of the entire chromosome.
+static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+    bigWigFile_t *bw = self->bw;
     double *val;
-    uint32_t start, end;
+    uint32_t start = 0, end = -1, tid;
     static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", NULL};
     char *chrom, *type = "mean";
     PyObject *ret;
-    int iType, i, nBins = 1;
+    int i, nBins = 1;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "skk|si", kwd_list, &chrom, &start, &end, &type, &nBins)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksi", kwd_list, &chrom, &start, &end, &type, &nBins)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
+
+    //Check inputs, reset to defaults if nothing was input
     if(!nBins) nBins = 1; //For some reason, not specifying this overrides the default!
+    if(!type) type = "mean";
+    tid = bwGetTid(bw, chrom);
+    if(tid == -1) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+    if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
+    if(start >= end) start = end-1;
 
-    iType = bwType2Int(type);
-    if(iType == -1) {
+    if(char2enum(type) == doesNotExist) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    val = malloc(nBins*sizeof(double));
-    for(i=0; i<nBins; i++) val[i] = strtod("NaN", NULL);
-
-    if(!bigWigSummaryArray(self->bbi, chrom, start, end, iType, nBins, val)) {
-        free(val);
+    //Get the actual statistics
+    val = bwStats(bw, chrom, start, end, nBins, char2enum(type));
+    if(!val) {
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -162,30 +133,29 @@ static PyObject *bwGetStats(bigWigFile_t *self, PyObject *args, PyObject *kwds) 
     return ret;
 }
 
+/*
 //Fetch a list of individual values
-//To do: make start and end optional
 //For bases with no coverage, the value should be None
-static PyObject *bwGetValues(bigWigFile_t *self, PyObject *args) {
+static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
     int i;
-    uint32_t start, end;
+    uint32_t start = 0, end = -1, tid;
     char *chrom = NULL;
+    static char *kwd_list[] = {"chrom", "start", "end", NULL};
     PyObject *ret;
-    struct bbiInterval *cur = NULL;
-    struct lm *lmem = NULL;
 
-    if(!PyArg_ParseTuple(args, "skk", &chrom, &start, &end)) {
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else if(!chrom) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &start, &end)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    lmem = lmInit(0);
-    if(!lmem) {
+    tid = bwGetTid(bw, chrom);
+    if(tid == -1) {
         Py_INCREF(Py_None);
         return Py_None;
     }
+    if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
+    if(start >= end) start = end-1;
 
     cur = bigWigIntervalQuery(self->bbi, chrom, start, end, lmem);
     if(!cur) {
@@ -206,9 +176,10 @@ static PyObject *bwGetValues(bigWigFile_t *self, PyObject *args) {
     Py_INCREF(ret);
     return ret;
 }
+*/
 
 PyMODINIT_FUNC initpyBigWig(void) {
     if(PyType_Ready(&bigWigFile) < 0) return;
-
+    if(bwInit(128000)) return; //This is temporary
     Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
 }
