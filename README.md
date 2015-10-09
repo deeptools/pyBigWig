@@ -1,12 +1,12 @@
 # pyBigWig
-A python extension written in C for quick access to bigWig files. This extension uses the C library functions written by Jim Kent, which have a separate license but are none-the-less available for everyone to use (including for commercial use).
+A python extension written in C for quick access to bigWig files. This extension uses [libBigWig](https://github.com/dpryan79/libBigWig) for local and remote file access.
 
-This extension is still under development and the functions may change. In particular, support for writing a bigWig file has yet to be added. Note that compiling with `-O2` or `-O1` seems to result in errors, while `-O0` and `-O3` work fine. The cause of this is currently unclear.
+This extension is still under development and the functions may change. Note that compiling with `-O2` or `-O1` seems to result in errors, while `-O0` does not. The cause of this is currently unclear.
 
 # Installation
 You can install this extension directly from github with:
 
-    pip install git+git://github.com/dpryan79/pyBigWig.git
+    pip install git+git://github.com/dpryan79/pyBigWig.git@libBigWig
 
 # Usage
 Basic usage is as follows:
@@ -83,7 +83,5 @@ A file can be closed with a simple `bw.close()`, as is commonly done with other 
 
 # To do
 
- - [X] Properly support remote files.
- - [X] Either modify Kent's libraries or rewrite key functions to get around it calling `exit()` on errors, since the extension shouldn't ever kill python.
  - [ ] Use numpy arrays instead of lists? This requires having numpy installed, which seems rather over the top but Fidel might want this for deeptools.
  - [ ] Writer functions? It's unclear how much these would even be used.

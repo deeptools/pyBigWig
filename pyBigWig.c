@@ -140,7 +140,7 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args, PyObject *k
     int i;
     uint32_t start = 0, end = -1, tid;
     char *chrom = NULL;
-    static char *kwd_list[] = {"start", "end", NULL};
+    static char *kwd_list[] = {"chrom", "start", "end", NULL};
     PyObject *ret;
     bwOverlappingIntervals_t *o;
 

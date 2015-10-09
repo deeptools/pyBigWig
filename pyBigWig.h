@@ -91,7 +91,7 @@ the region will be divided into and defaults to 1.\n\
 [0.10000000521540645]\n\
 >>> bw.stats(\"1\",99,200, type=\"max\", nBins=2)\n\
 [1.399999976158142, 1.5]\n"},
-    {"values", (PyCFunction)pyBwGetValues, METH_VARARGS,
+    {"values", (PyCFunction)pyBwGetValues, METH_VARARGS|METH_KEYWORDS,
 "Retrieve the value stored for each position (or None)\n\
 \n\
 Positional arguments:\n\

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from distutils.core import setup, Extension
 import subprocess
 import glob
@@ -9,7 +10,7 @@ srcs.append("pyBigWig.c")
 module1 = Extension('pyBigWig',
                     sources = srcs,
                     libraries = ["m", "z", "curl"],
-                    lib_dirs = ["/usr/lib/x86_64-linux-gnu"],
+                    extra_compile_args = ["-O0"],
                     include_dirs = ['libBigWig'])
 
 setup (name = 'pyBigWig',
