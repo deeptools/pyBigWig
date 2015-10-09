@@ -6,7 +6,7 @@ This extension is still under development and the functions may change. Note tha
 # Installation
 You can install this extension directly from github with:
 
-    pip install git+git://github.com/dpryan79/pyBigWig.git@libBigWig
+    pip install git+git://github.com/dpryan79/pyBigWig.git
 
 # Usage
 Basic usage is as follows:
