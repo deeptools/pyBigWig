@@ -133,16 +133,16 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     return ret;
 }
 
-/*
 //Fetch a list of individual values
 //For bases with no coverage, the value should be None
-static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
+static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
     int i;
     uint32_t start = 0, end = -1, tid;
     char *chrom = NULL;
-    static char *kwd_list[] = {"chrom", "start", "end", NULL};
+    static char *kwd_list[] = {"start", "end", NULL};
     PyObject *ret;
+    bwOverlappingIntervals_t *o;
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &start, &end)) {
         Py_INCREF(Py_None);
@@ -157,26 +157,19 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
     if(start >= end) start = end-1;
 
-    cur = bigWigIntervalQuery(self->bbi, chrom, start, end, lmem);
-    if(!cur) {
+    o = bwGetValues(self->bw, chrom, start, end, 1);
+    if(!o) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     ret = PyList_New(end-start);
-    for(i=0; i<end-start; i++) PyList_SetItem(ret, i, Py_None);
-    while(cur) {
-        for(i=cur->start; i<cur->end; i++) {
-            PyList_SetItem(ret, i-start, PyFloat_FromDouble(cur->val));
-        }
-        cur = cur->next;
-    }
-    lmCleanup(&lmem);
+    for(i=0; i<o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
+    bwDestroyOverlappingIntervals(o);
 
     Py_INCREF(ret);
     return ret;
 }
-*/
 
 PyMODINIT_FUNC initpyBigWig(void) {
     if(PyType_Ready(&bigWigFile) < 0) return;

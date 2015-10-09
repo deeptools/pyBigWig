@@ -11,7 +11,7 @@ static PyObject* pyBwOpen(PyObject *self, PyObject *pyFname);
 static PyObject* pyBwClose(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetChroms(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
-//static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static void pyBwDealloc(pyBigWigFile_t *pybw);
 
 //The function types aren't actually correct...
@@ -91,7 +91,6 @@ the region will be divided into and defaults to 1.\n\
 [0.10000000521540645]\n\
 >>> bw.stats(\"1\",99,200, type=\"max\", nBins=2)\n\
 [1.399999976158142, 1.5]\n"},
-/*
     {"values", (PyCFunction)pyBwGetValues, METH_VARARGS,
 "Retrieve the value stored for each position (or None)\n\
 \n\
@@ -111,7 +110,6 @@ uncovered bases will have a value of None.\n\
 >>> bw.values(\"1\", 0, 4)\n\
 [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]\n\
 \n"},
-*/
     {NULL, NULL, 0, NULL}
 };
 
