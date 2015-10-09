@@ -75,7 +75,7 @@ While the `stats()` method **can** be used to retrieve the original values for e
 The list produced will always contain one value for every base in the range specified. If a particular base has no associated value in the bigWig file then the returned value will be `nan`.
 
     >>> bw.values("1", 0, 4)
-    [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]
+    [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, nan]
 
 ## Close a bigWig file
 
