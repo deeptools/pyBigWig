@@ -43,6 +43,46 @@ static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
     return Py_None;
 }
 
+//Accessor for the header (version, nLevels, nBasesCovered, minVal, maxVal, sumData, sumSquared
+static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
+    PyObject *ret, *val;
+
+    ret = PyDict_New();
+    val = PyLong_FromUnsignedLong(bw->hdr->version);
+    if(PyDict_SetItemString(ret, "version", val) == -1) goto error;
+    Py_DECREF(val);
+    val = PyLong_FromUnsignedLong(bw->hdr->nLevels);
+    if(PyDict_SetItemString(ret, "nLevels", val) == -1) goto error;
+    Py_DECREF(val);
+    val = PyLong_FromUnsignedLongLong(bw->hdr->nBasesCovered);
+    if(PyDict_SetItemString(ret, "nBasesCovered", val) == -1) goto error;
+    Py_DECREF(val);
+    val = PyLong_FromDouble(bw->hdr->minVal);
+    Py_DECREF(val);
+    val = PyLong_FromDouble(bw->hdr->minVal);
+    if(PyDict_SetItemString(ret, "minVal", val) == -1) goto error;
+    Py_DECREF(val);
+    val = PyLong_FromDouble(bw->hdr->maxVal);
+    if(PyDict_SetItemString(ret, "maxVal", val) == -1) goto error;
+    Py_DECREF(val);
+    val = PyLong_FromDouble(bw->hdr->sumData);
+    if(PyDict_SetItemString(ret, "sumData", val) == -1) goto error;
+    Py_DECREF(val);
+    val = PyLong_FromDouble(bw->hdr->sumSquared);
+    if(PyDict_SetItemString(ret, "sumSquared", val) == -1) goto error;
+    Py_DECREF(val);
+
+    Py_INCREF(ret);
+    return ret;
+
+error :
+    Py_XDECREF(val);
+    Py_XDECREF(ret);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 //Accessor for the chroms, args is optional
 static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
     PyObject *ret = Py_None, *val;
@@ -135,16 +175,15 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 
 //Fetch a list of individual values
 //For bases with no coverage, the value should be None
-static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
     int i;
     uint32_t start = 0, end = -1, tid;
     char *chrom = NULL;
-    static char *kwd_list[] = {"chrom", "start", "end", NULL};
     PyObject *ret;
     bwOverlappingIntervals_t *o;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &start, &end)) {
+    if(!PyArg_ParseTuple(args, "skk", &chrom, &start, &end)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -167,6 +206,51 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args, PyObject *k
     for(i=0; i<o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
     bwDestroyOverlappingIntervals(o);
 
+    Py_INCREF(ret);
+    return ret;
+}
+
+static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+    bigWigFile_t *bw = self->bw;
+    double *val;
+    uint32_t start = 0, end = -1, tid, i;
+    static char *kwd_list[] = {"chrom", "start", "end", NULL};
+    bwOverlappingIntervals_t *intervals = NULL;
+    char *chrom;
+    PyObject *ret;
+
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &start, &end)) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    //Sanity check
+    tid = bwGetTid(bw, chrom);
+    if(tid == -1) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+    if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
+    if(start >= end) start = end-1;
+
+    //Get the intervals
+    intervals = bwGetOverlappingIntervals(bw, chrom, start, end);
+    if(!intervals || !intervals->l) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    ret = PyTuple_New(intervals->l);
+    for(i=0; i<intervals->l; i++) {
+        if(PyTuple_SetItem(ret, i, Py_BuildValue("(iif)", intervals->start[i], intervals->end[i], intervals->value[i]))) {
+            Py_DECREF(ret);
+            bwDestroyOverlappingIntervals(intervals);
+            Py_INCREF(Py_None);
+            return Py_None;
+        }
+    }
+
+    bwDestroyOverlappingIntervals(intervals);
     Py_INCREF(ret);
     return ret;
 }

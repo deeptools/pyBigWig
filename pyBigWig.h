@@ -11,13 +11,16 @@ static PyObject* pyBwOpen(PyObject *self, PyObject *pyFname);
 static PyObject* pyBwClose(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetChroms(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
-static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
 static void pyBwDealloc(pyBigWigFile_t *pybw);
 
 //The function types aren't actually correct...
 static PyMethodDef bwMethods[] = {
     {"open", (PyCFunction)pyBwOpen, METH_VARARGS,
-"Open a bigWig file.\n\
+"Open a bigWig file. For remote files, give a URL starting with HTTP,\n\
+FTP, or HTTPS.\n\
 \n\
 Returns:\n\
    A bigWigFile object on success, otherwise None.\n\
@@ -27,6 +30,24 @@ Arguments:\n\
 \n\
 >>> import pyBigWig\n\
 >>> bw = pyBigWig.open(\"some_file.bw\")\n"},
+    {"header", (PyCFunction)pyBwGetHeader, METH_VARARGS,
+"Returns the header of a bigWig file. This contains information such as: \n\
+  * The version number of the file ('version').\n\
+  * The number of zoom levels ('nLevels').\n\
+  * The number of bases covered ('nBasesCovered').\n\
+  * The minimum value ('minVal').\n\
+  * The maximum value ('maxVal').\n\
+  * The sum of all values ('sumData').\n\
+  * The sum of the square of all values ('sumSquared').\n\
+These are returned as a dictionary.\n\
+\n\
+>>> import pyBigWig\n\
+>>> bw = pyBigWig.open(\"some_file.bw\")\n\
+>>> bw.header()\n\
+{'maxVal': 2L, 'sumData': 272L, 'minVal': 0L, 'version': 4L,\n\
+'sumSquared': 500L, 'nLevels': 1L, 'nBasesCovered': 154L}\n\
+>>> bw.close()\n"},
+
     {"close", (PyCFunction)pyBwClose, METH_VARARGS,
 "Close a bigWig file.\n\
 \n\
@@ -34,11 +55,12 @@ Arguments:\n\
 >>> bw = pyBigWig.open(\"some_file.bw\")\n\
 >>> bw.close()\n"},
     {"chroms", (PyCFunction)pyBwGetChroms, METH_VARARGS,
-"Return a chromosome: length dictionary. The order is typically not alphabetical\n\
-and the lengths are long (thus the 'L' suffix).\n\
+"Return a chromosome: length dictionary. The order is typically not\n\
+alphabetical and the lengths are long (thus the 'L' suffix).\n\
 \n\
 Optional arguments:\n\
     chrom: An optional chromosome name\n\
+\n\
 Returns:\n\
     A list of chromosome lengths or a dictionary of them.\n\
 \n\
@@ -61,25 +83,27 @@ If you specify a non-existant chromosome then no output is produced:\n\
 \n\
 Positional arguments:\n\
     chr:   Chromosome name\n\
-    start: Starting position\n\
-    end:   Ending position\n\
 \n\
 Keyword arguments:\n\
+    start: Starting position\n\
+    end:   Ending position\n\
     type:  Summary type (mean, min, max, coverage, std), default 'mean'.\n\
-    nBins: Number of bins into which the range should be divided before computing\n\
-           summary statistics, default 1.\n\
+    nBins: Number of bins into which the range should be divided before\n\
+           computing summary statistics. The default is 1.\n\
 \n\
 >>> import pyBigWig\n\
 >>> bw = pyBigWig.open(\"test/test.bw\")\n\
 >>> bw.stats(\"1\", 0, 3)\n\
 [0.2000000054637591]\n\
 \n\
-This is the mean value over the range 1:1-3 (in 1-based coordinates). There are\n\
-additional optional parameters 'type' and 'nBins'. 'type' specifies the type of\n\
-summary information to calculate, which is 'mean' by default. Other possibilites\n\
-for 'type' are: 'min' (minimum value), 'max' (maximum value), 'coverage' (number\n\
-of covered bases), and 'std' (standard deviation). 'nBins' defines how many bins\n\
-the region will be divided into and defaults to 1.\n\
+This is the mean value over the range 1:1-3 (in 1-based coordinates). If\n\
+the start and end positions aren't given the entire chromosome is used.\n\
+There are additional optional parameters 'type' and 'nBins'. 'type'\n\
+specifies the type of summary information to calculate, which is 'mean'\n\
+by default. Other possibilites for 'type' are: 'min' (minimum value),\n\
+'max' (maximum value), 'coverage' (number of covered bases), and 'std'\n\
+ (standard deviation). 'nBins' defines how many bins the region will be\n\
+ divided into and defaults to 1.\n\
 \n\
 >>> bw.stats(\"1\", 0, 3, type=\"min\")\n\
 [0.10000000149011612]\n\
@@ -91,7 +115,7 @@ the region will be divided into and defaults to 1.\n\
 [0.10000000521540645]\n\
 >>> bw.stats(\"1\",99,200, type=\"max\", nBins=2)\n\
 [1.399999976158142, 1.5]\n"},
-    {"values", (PyCFunction)pyBwGetValues, METH_VARARGS|METH_KEYWORDS,
+    {"values", (PyCFunction)pyBwGetValues, METH_VARARGS,
 "Retrieve the value stored for each position (or None)\n\
 \n\
 Positional arguments:\n\
@@ -104,12 +128,34 @@ Positional arguments:\n\
 >>> bw.values(\"1\", 0, 3)\n\
 [0.10000000149011612, 0.20000000298023224, 0.30000001192092896]\n\
 \n\
-The length of the returned list will always match the length of the range. Any\n\
-uncovered bases will have a value of None.\n\
+The length of the returned list will always match the length of the\n\
+range. Any uncovered bases will have a value of None.\n\
 \n\
 >>> bw.values(\"1\", 0, 4)\n\
 [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]\n\
 \n"},
+    {"intervals", (PyCFunction)pyBwGetIntervals, METH_VARARGS|METH_KEYWORDS,
+"Retrieve each interval covering a part of a chromosome/region.\n\
+\n\
+Positional arguments:\n\
+    chr:   Chromosome name\n\
+\n\
+Keyword arguments:\n\
+    start: Starting position\n\
+    end:   Ending position\n\
+\n\
+If start and end aren't specified, the entire chromosome is returned.\n\
+The returned object is a tuple containing the starting position, end\n\
+position, and value of each interval in the file. As with all bigWig\n\
+positions, those returned are 0-based half-open (e.g., a start of 0 and\n\
+end of 10 specifies the first 10 positions).\n\
+\n\
+>>> import pyBigWig\n\
+>>> bw = pyBigWig.open(\"test/test.bw\")\n\
+>>> bw.intervals(\"1\", 0, 3)\n\
+((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224),\n\
+ (2, 3, 0.30000001192092896))\n\
+>>> bw.close()"},
     {NULL, NULL, 0, NULL}
 };
 

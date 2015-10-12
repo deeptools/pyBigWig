@@ -65,6 +65,11 @@ It's often the case that we would instead like to compute values of some number 
 
 `nBins` defaults to 1, just as `type` defaults to `mean`.
 
+If the start and end positions are omitted then the entire chromosome is used:
+
+    >>> bw.stats("1")
+    [1.3351851569281683]
+
 ## Retrieve values for individual bases in a range
 
 While the `stats()` method **can** be used to retrieve the original values for each base (e.g., by setting `nBins` to the number of bases), it's preferable to instead use the `values()` accessor.
@@ -77,6 +82,20 @@ The list produced will always contain one value for every base in the range spec
     >>> bw.values("1", 0, 4)
     [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, nan]
 
+## Retrieve all intervals in a range
+
+Sometimes it's convenient to retrieve all entries overlapping some range. This can be done with the `intervals()` function:
+
+    >>> bw.intervals("1", 0, 3)
+    ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896))
+
+What's returned is a list of tuples containing: the start position, end end position, and the value. Thus, the example above has values of `0.1`, `0.2`, and `0.3` at positions `0`, `1`, and `2`, respectively.
+
+If the start and end position are omitted then all intervals on the chromosome specified are returned:
+
+    >>> bw.intervals("1")
+    ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896), (100, 150, 1.399999976158142), (150, 151, 1.5))
+
 ## Close a bigWig file
 
 A file can be closed with a simple `bw.close()`, as is commonly done with other file types.
@@ -85,3 +104,4 @@ A file can be closed with a simple `bw.close()`, as is commonly done with other 
 
  - [ ] Use numpy arrays instead of lists? This requires having numpy installed, which seems rather over the top but Fidel might want this for deeptools.
  - [ ] Writer functions? It's unclear how much these would even be used.
+ - [ ] The global curl cleanup stuff isn't being done at all currently.
