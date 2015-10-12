@@ -178,8 +178,8 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
     int i;
-    uint32_t start = 0, end = -1, tid;
-    char *chrom = NULL;
+    uint32_t start, end, tid;
+    char *chrom;
     PyObject *ret;
     bwOverlappingIntervals_t *o;
 
@@ -212,7 +212,6 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
-    double *val;
     uint32_t start = 0, end = -1, tid, i;
     static char *kwd_list[] = {"chrom", "start", "end", NULL};
     bwOverlappingIntervals_t *intervals = NULL;

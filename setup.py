@@ -2,14 +2,17 @@
 from distutils.core import setup, Extension
 import subprocess
 import glob
+import sys
 
 srcs = [x for x in 
     glob.glob("libBigWig/*.c")]
 srcs.append("pyBigWig.c")
 
+libpython = "python%i.%i" % (sys.version_info[0], sys.version_info[1])
+
 module1 = Extension('pyBigWig',
                     sources = srcs,
-                    libraries = ["m", "z", "curl"],
+                    libraries = ["m", "z", "curl", libpython],
                     extra_compile_args = ["-O0"],
                     include_dirs = ['libBigWig'])
 
