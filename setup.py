@@ -13,7 +13,6 @@ libpython = "python%i.%i" % (sys.version_info[0], sys.version_info[1])
 module1 = Extension('pyBigWig',
                     sources = srcs,
                     libraries = ["m", "z", "curl", libpython],
-                    extra_compile_args = ["-O0"],
                     include_dirs = ['libBigWig'])
 
 setup (name = 'pyBigWig',

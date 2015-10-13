@@ -1,3 +1,5 @@
+//Some versions of GCC optimize the functions in a way that segfaults
+#pragma GCC optimize("O0")
 #include <Python.h>
 #include <assert.h>
 #include <inttypes.h>
@@ -255,6 +257,7 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 }
 
 PyMODINIT_FUNC initpyBigWig(void) {
+    errno=0; //Sometimes libpython2.7.so is missing some links...
     if(PyType_Ready(&bigWigFile) < 0) return;
     if(bwInit(128000)) return; //This is temporary
     Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
