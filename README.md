@@ -1,8 +1,6 @@
 # pyBigWig
 A python extension written in C for quick access to bigWig files. This extension uses [libBigWig](https://github.com/dpryan79/libBigWig) for local and remote file access.
 
-This extension is still under development and the functions may change. Note that compiling with `-O2` or `-O1` seems to result in errors, while `-O0` does not. The cause of this is currently unclear.
-
 # Installation
 You can install this extension directly from github with:
 
@@ -10,10 +8,6 @@ You can install this extension directly from github with:
 
 # Usage
 Basic usage is as follows:
-
-## A note on coordinates
-
-Wiggle and BigWig files use 0-based half-open coordinates, which are also used by this extension. So to access the value for the first base on `chr1`, one would specify the starting position as `0` and the end position as `1`. Similarly, bases 100 to 115 would have a start of `99` and an end of `115`. This is simply for the sake of consistency with the underlying bigWig file and may change in the future.
 
 ## Load the extension
 
@@ -99,6 +93,10 @@ If the start and end position are omitted then all intervals on the chromosome s
 ## Close a bigWig file
 
 A file can be closed with a simple `bw.close()`, as is commonly done with other file types.
+
+# A note on coordinates
+
+Wiggle and BigWig files use 0-based half-open coordinates, which are also used by this extension. So to access the value for the first base on `chr1`, one would specify the starting position as `0` and the end position as `1`. Similarly, bases 100 to 115 would have a start of `99` and an end of `115`. This is simply for the sake of consistency with the underlying bigWig file and may change in the future.
 
 # To do
 
