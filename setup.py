@@ -16,6 +16,6 @@ module1 = Extension('pyBigWig',
                     include_dirs = ['libBigWig'])
 
 setup (name = 'pyBigWig',
-       version = '1.0',
+       version = '1.1',
        description = 'A package for accessing bigWig files',
        ext_modules = [module1])
