@@ -38,6 +38,13 @@ The lengths are stored a the "long" integer type, which is why there's an `L` su
     >>> bw.chroms("c")
     >>> 
 
+## Print the header
+
+It's sometimes useful to print a bigWig's header. This is presented here as a python dictionary containing: the version (typically `4`), the number of zoom levels (`nLevels`), the number of bases described (`nBasesCovered`), the minimum value (`minVal`), the maximum value (`maxVal`), the sum of all values (`sumData`), and the sum of all squared values (`sumSquared`). The last two of these are needed for determining the mean and standard deviation.
+
+    >>> bw.header()
+    {'maxVal': 2L, 'sumData': 272L, 'minVal': 0L, 'version': 4L, 'sumSquared': 500L, 'nLevels': 1L, 'nBasesCovered': 154L}
+
 ## Compute summary information on a range
 
 BigWig files are used to store values associated with positions and ranges of them. Typically we want to quickly access the average value over a range, which is very simple:
