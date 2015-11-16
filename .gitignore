@@ -56,3 +56,5 @@ docs/_build/
 target/
 
 *.o
+#./setup.py sdist creates this
+MANIFEST
