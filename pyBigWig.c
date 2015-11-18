@@ -1,5 +1,3 @@
-//Some versions of GCC optimize the functions in a way that segfaults
-#pragma GCC optimize("O0")
 #include <Python.h>
 #include <assert.h>
 #include <inttypes.h>
@@ -133,13 +131,14 @@ enum bwStatsType char2enum(char *s) {
 static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
     double *val;
-    uint32_t start = 0, end = -1, tid;
+    uint32_t start, end = -1, tid;
+    unsigned long startl = 0, endl = -1;
     static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", NULL};
     char *chrom, *type = "mean";
     PyObject *ret;
     int i, nBins = 1;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksi", kwd_list, &chrom, &start, &end, &type, &nBins)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksi", kwd_list, &chrom, &startl, &endl, &type, &nBins)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -148,10 +147,12 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     if(!nBins) nBins = 1; //For some reason, not specifying this overrides the default!
     if(!type) type = "mean";
     tid = bwGetTid(bw, chrom);
-    if(tid == -1) {
+    if(tid == -1 || startl > end || endl > end) {
         Py_INCREF(Py_None);
         return Py_None;
     }
+    start = startl;
+    end = endl;
     if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
     if(start >= end) start = end-1;
 
@@ -180,21 +181,24 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
     int i;
-    uint32_t start, end, tid;
+    uint32_t start, end = -1, tid;
+    unsigned long startl, endl;
     char *chrom;
     PyObject *ret;
     bwOverlappingIntervals_t *o;
 
-    if(!PyArg_ParseTuple(args, "skk", &chrom, &start, &end)) {
+    if(!PyArg_ParseTuple(args, "skk", &chrom, &startl, &endl)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     tid = bwGetTid(bw, chrom);
-    if(tid == -1) {
+    if(tid == -1 || startl > end || endl > end) {
         Py_INCREF(Py_None);
         return Py_None;
     }
+    start = startl;
+    end = endl;
     if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
     if(start >= end) start = end-1;
 
@@ -214,23 +218,26 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
-    uint32_t start = 0, end = -1, tid, i;
+    uint32_t start, end = -1, tid, i;
+    unsigned long startl = 0, endl = -1;
     static char *kwd_list[] = {"chrom", "start", "end", NULL};
     bwOverlappingIntervals_t *intervals = NULL;
     char *chrom;
     PyObject *ret;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &start, &end)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &startl, &endl)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     //Sanity check
     tid = bwGetTid(bw, chrom);
-    if(tid == -1) {
+    if(tid == -1 || startl > end || endl > end) {
         Py_INCREF(Py_None);
         return Py_None;
     }
+    start = startl;
+    end = endl;
     if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
     if(start >= end) start = end-1;
 
