@@ -159,10 +159,31 @@ end of 10 specifies the first 10 positions).\n\
     {NULL, NULL, 0, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
+struct pyBigWigmodule_state {
+    PyObject *error;
+};
+
+#define GETSTATE(m) ((struct pyBigWigmodule_state*)PyModule_GetState(m))
+
+static PyModuleDef pyBigWigmodule = {
+    PyModuleDef_HEAD_INIT,
+    "pyBigWig",
+    "A python module for bigWig file access",
+    -1,
+    bwMethods,
+    NULL, NULL, NULL, NULL
+};
+#endif
+
 //Should set tp_dealloc, tp_print, tp_repr, tp_str, tp_members
 static PyTypeObject bigWigFile = {
+#if PY_MAJOR_VERSION >= 3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
     PyObject_HEAD_INIT(NULL)
     0,              /*ob_size*/
+#endif
     "pyBigWig.bigWigFile",     /*tp_name*/
     sizeof(pyBigWigFile_t),      /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -181,11 +202,18 @@ static PyTypeObject bigWigFile = {
     PyObject_GenericGetAttr, /*tp_getattro*/
     PyObject_GenericSetAttr, /*tp_setattro*/
     0,                         /*tp_as_buffer*/
+#if PY_MAJOR_VERSION >= 3
+    Py_TPFLAGS_DEFAULT,        /*tp_flags*/
+#else
     Py_TPFLAGS_HAVE_CLASS,     /*tp_flags*/
+#endif
     "bigWig File",             /*tp_doc*/
-    0,0,0,0,
-    0,
-    0,
+    0,                         /*tp_traverse*/
+    0,                         /*tp_clear*/
+    0,                         /*tp_richcompare*/
+    0,                         /*tp_weaklistoffset*/
+    0,                         /*tp_iter*/
+    0,                         /*tp_iternext*/
     bwMethods,                 /*tp_methods*/
     0,                         /*tp_members*/
     0,                         /*tp_getset*/
