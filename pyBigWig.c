@@ -147,14 +147,17 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     if(!nBins) nBins = 1; //For some reason, not specifying this overrides the default!
     if(!type) type = "mean";
     tid = bwGetTid(bw, chrom);
+    if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
     if(tid == -1 || startl > end || endl > end) {
         Py_INCREF(Py_None);
         return Py_None;
     }
     start = startl;
     end = endl;
-    if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
-    if(start >= end) start = end-1;
+    if(end <= start || end > bw->cl->len[tid] || start >= end) {
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
+    }
 
     if(char2enum(type) == doesNotExist) {
         Py_INCREF(Py_None);
@@ -193,14 +196,17 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     }
 
     tid = bwGetTid(bw, chrom);
+    if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
     if(tid == -1 || startl > end || endl > end) {
         Py_INCREF(Py_None);
         return Py_None;
     }
     start = startl;
     end = endl;
-    if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
-    if(start >= end) start = end-1;
+    if(end <= start || end > bw->cl->len[tid] || start >= end) {
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
+    }
 
     o = bwGetValues(self->bw, chrom, start, end, 1);
     if(!o) {
@@ -232,14 +238,18 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 
     //Sanity check
     tid = bwGetTid(bw, chrom);
+    if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
+printf("startl is %lu and endl is %lu\n", startl, endl);
     if(tid == -1 || startl > end || endl > end) {
         Py_INCREF(Py_None);
         return Py_None;
     }
     start = startl;
     end = endl;
-    if(end <= start || end > bw->cl->len[tid]) end = bw->cl->len[tid];
-    if(start >= end) start = end-1;
+    if(end <= start || end > bw->cl->len[tid] || start >= end) {
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
+    }
 
     //Get the intervals
     intervals = bwGetOverlappingIntervals(bw, chrom, start, end);
