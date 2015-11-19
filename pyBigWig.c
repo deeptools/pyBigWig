@@ -239,7 +239,6 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     //Sanity check
     tid = bwGetTid(bw, chrom);
     if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
-printf("startl is %lu and endl is %lu\n", startl, endl);
     if(tid == -1 || startl > end || endl > end) {
         Py_INCREF(Py_None);
         return Py_None;
