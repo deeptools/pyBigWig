@@ -6,6 +6,8 @@
 #include "io.h"
 #include <inttypes.h>
 
+size_t GLOBAL_DEFAULTBUFFERSIZE;
+
 uint64_t getContentLength(URL_t *URL) {
     double size;
     if(curl_easy_getinfo(URL->x.curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &size) != CURLE_OK) {

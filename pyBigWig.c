@@ -152,8 +152,8 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
         Py_INCREF(Py_None);
         return Py_None;
     }
-    start = startl;
-    end = endl;
+    start = (uint32_t) startl;
+    end = (uint32_t) endl;
     if(end <= start || end > bw->cl->len[tid] || start >= end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
@@ -201,8 +201,8 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
         Py_INCREF(Py_None);
         return Py_None;
     }
-    start = startl;
-    end = endl;
+    start = (uint32_t) startl;
+    end = (uint32_t) endl;
     if(end <= start || end > bw->cl->len[tid] || start >= end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
@@ -243,8 +243,8 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
         Py_INCREF(Py_None);
         return Py_None;
     }
-    start = startl;
-    end = endl;
+    start = (uint32_t) startl;
+    end = (uint32_t) endl;
     if(end <= start || end > bw->cl->len[tid] || start >= end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
