@@ -6,7 +6,7 @@
 /*!
  * The size of the buffer used for remote files.
  */
-size_t GLOBAL_DEFAULTBUFFERSIZE;
+extern size_t GLOBAL_DEFAULTBUFFERSIZE;
 
 /*!
  * The enumerated values that indicate the connection type used to access a file.
