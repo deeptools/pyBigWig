@@ -137,6 +137,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     char *chrom, *type = "mean";
     PyObject *ret;
     int i, nBins = 1;
+    errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksi", kwd_list, &chrom, &startl, &endl, &type, &nBins)) {
         Py_INCREF(Py_None);
