@@ -21,7 +21,6 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
     if(!pybw) goto error;
     pybw->bw = bw;
-//    PyObject_GC_Init((PyObject*) pybw);
     return (PyObject*) pybw;
 
 error:
@@ -31,9 +30,7 @@ error:
 }
 
 static void pyBwDealloc(pyBigWigFile_t *self) {
-//    PyObject_GC_Fini((PyObject*) self);
     if(self->bw) bwClose(self->bw);
-//    PyObject_DEL(PyObject_AS_GC(self));
     PyObject_DEL(self);
 }
 
@@ -138,6 +135,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     char *chrom, *type = "mean";
     PyObject *ret;
     int i, nBins = 1;
+    errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksi", kwd_list, &chrom, &startl, &endl, &type, &nBins)) {
         Py_INCREF(Py_None);
