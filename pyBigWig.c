@@ -21,7 +21,6 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
     if(!pybw) goto error;
     pybw->bw = bw;
-    PyObject_GC_Init((PyObject*) pybw);
     return (PyObject*) pybw;
 
 error:
@@ -31,9 +30,8 @@ error:
 }
 
 static void pyBwDealloc(pyBigWigFile_t *self) {
-    PyObject_GC_Fini((PyObject*) self);
     if(self->bw) bwClose(self->bw);
-    PyObject_DEL(PyObject_AS_GC(self));
+    PyObject_DEL(self);
 }
 
 static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
@@ -273,9 +271,27 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     return ret;
 }
 
+#if PY_MAJOR_VERSION >= 3
+PyMODINIT_FUNC PyInit_pyBigWig(void) {
+    PyObject *res;
+    errno = 0; //just in case
+
+    if(PyType_Ready(&bigWigFile) < 0) return NULL;
+    if(bwInit(128000)) return NULL;
+    res = PyModule_Create(&pyBigWigmodule);
+    if(!res) return NULL;
+
+    Py_INCREF(&bigWigFile);
+    PyModule_AddObject(res, "pyBigWig", (PyObject *) &bigWigFile);
+
+    return res;
+}
+#else
+//Python2 initialization
 PyMODINIT_FUNC initpyBigWig(void) {
     errno=0; //Sometimes libpython2.7.so is missing some links...
     if(PyType_Ready(&bigWigFile) < 0) return;
     if(bwInit(128000)) return; //This is temporary
     Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
 }
+#endif
