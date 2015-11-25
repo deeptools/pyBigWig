@@ -10,12 +10,12 @@ class TestRemote():
         return bw
 
     def doChroms(self, bw):
-        assert(bw.chroms() == {'1': 195471971L, '10': 130694993L})
-        assert(bw.chroms("1") == 195471971L)
+        assert(bw.chroms() == {'1': 195471971, '10': 130694993})
+        assert(bw.chroms("1") == 195471971)
         assert(bw.chroms("c") is None)
 
     def doHeader(self, bw):
-        assert(bw.header() == {'maxVal': 2L, 'sumData': 272L, 'minVal': 0L, 'version': 4L, 'sumSquared': 500L, 'nLevels': 1L, 'nBasesCovered': 154L})
+        assert(bw.header() == {'maxVal': 2, 'sumData': 272, 'minVal': 0, 'version': 4, 'sumSquared': 500, 'nLevels': 1, 'nBasesCovered': 154})
 
     def doStats(self, bw):
         assert(bw.stats("1", 0, 3) == [0.2000000054637591])
@@ -43,5 +43,5 @@ class TestRemote():
 class TestLocal():
     def testFoo(self):
         blah = TestRemote()
-        blah.fname = "test/test.bw"
+        blah.fname = "pyBigWigTest/test.bw"
         blah.testAll()
