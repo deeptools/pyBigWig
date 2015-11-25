@@ -10,7 +10,7 @@ srcs = [x for x in
     glob.glob("libBigWig/*.c")]
 srcs.append("pyBigWig.c")
 
-if(sys.version_info[0] >= 3) :
+if(sys.version_info[0] >= 3 and sys.version_info[1] >= 3) :
     libpython = "python%i.%im" % (sys.version_info[0], sys.version_info[1])
 else :
     libpython = "python%i.%i" % (sys.version_info[0], sys.version_info[1])
