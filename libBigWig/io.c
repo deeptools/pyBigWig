@@ -108,7 +108,7 @@ CURLcode urlSeek(URL_t *URL, size_t pos) {
             URL->bufLen = 0; //Otherwise, filePos will get incremented on the next read!
             URL->bufPos = 0;
             //Maybe this works for FTP?
-            sprintf(range,"%"PRIu64"-%"PRIu64, pos, pos+URL->bufSize-1);
+            sprintf(range,"%lu-%lu", pos, pos+URL->bufSize-1);
             rv = curl_easy_setopt(URL->x.curl, CURLOPT_RANGE, range);
             if(rv != CURLE_OK) {
                 fprintf(stderr, "[urlSeek] Couldn't set the range (%s)\n", range);
@@ -175,7 +175,7 @@ URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*)) {
             goto error;
         }
         //Set the range, which doesn't do anything for HTTP
-        sprintf(range, "0-%"PRIu64, URL->bufSize-1);
+        sprintf(range, "0-%lu", URL->bufSize-1);
         if(curl_easy_setopt(URL->x.curl, CURLOPT_RANGE, range) != CURLE_OK) {
             fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_RANGE (%s)!\n", range);
             goto error;

@@ -105,14 +105,16 @@ error:
 
 static void bwHdrDestroy(bigWigHdr_t *hdr) {
     int i;
-    free(hdr->zoomHdrs->level);
-    free(hdr->zoomHdrs->dataOffset);
-    free(hdr->zoomHdrs->indexOffset);
-    for(i=0; i<hdr->nLevels; i++) {
-        if(hdr->zoomHdrs->idx[i]) bwDestroyIndex(hdr->zoomHdrs->idx[i]);
+    if(hdr->zoomHdrs) {
+        free(hdr->zoomHdrs->level);
+        free(hdr->zoomHdrs->dataOffset);
+        free(hdr->zoomHdrs->indexOffset);
+        for(i=0; i<hdr->nLevels; i++) {
+            if(hdr->zoomHdrs->idx[i]) bwDestroyIndex(hdr->zoomHdrs->idx[i]);
+        }
+        free(hdr->zoomHdrs->idx);
+        free(hdr->zoomHdrs);
     }
-    free(hdr->zoomHdrs->idx);
-    free(hdr->zoomHdrs);
     free(hdr);
 }
 
@@ -254,7 +256,7 @@ static chromList_t *bwReadChromList(bigWigFile_t *bw) {
     i = 0;
     while(i<itemCount) {
         rv = readChromBlock(bw, cl, keySize);
-        if(rv < 0) goto error;
+        if(rv == (uint64_t) -1) goto error;
         i += rv;
     }
 
