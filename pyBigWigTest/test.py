@@ -1,7 +1,7 @@
 import pyBigWig
 
 class TestRemote():
-    fname = "https://raw.githubusercontent.com/dpryan79/pyBigWig/master/test/test.bw"
+    fname = "https://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
 
     def doOpen(self):
         print(self.fname)
