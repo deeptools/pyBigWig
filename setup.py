@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-#from distutils.core import setup, Extension
-from distutils.core import Extension
-import setuptools
+from setuptools import setup, Extension, find_packages
 import subprocess
 import glob
 import sys
@@ -20,7 +18,7 @@ module1 = Extension('pyBigWig',
                     libraries = ["m", "z", "curl", libpython],
                     include_dirs = ['libBigWig'])
 
-setuptools.setup(name = 'pyBigWig',
+setup(name = 'pyBigWig',
        version = '1.0.8',
        description = 'A package for accessing bigWig files using libBigWig',
        author = "Devon P. Ryan",
@@ -28,6 +26,6 @@ setuptools.setup(name = 'pyBigWig',
        url = "https://github.com/dpryan79/pyBigWig",
        download_url = "https://github.com/dpryan79/pyBigWig/tarball/1.0.1",
        keywords = ["bioinformatics", "bigWig"],
-       packages = setuptools.find_packages(),
+       packages = find_packages(),
        include_package_data=True,
        ext_modules = [module1])
