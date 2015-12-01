@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from setuptools import setup, Extension, find_packages
+from distutils import sysconfig
 import subprocess
 import glob
 import sys
@@ -13,13 +14,25 @@ if(sys.version_info[0] >= 3 and sys.version_info[1] >= 3) :
 else :
     libpython = "python%i.%i" % (sys.version_info[0], sys.version_info[1])
 
+#LIBRARY_PATH is often not set in Galaxy, though curl-config is in the PATH
+foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
+foo = foo.strip().split()
+curldir = None
+for v in foo:
+    if(v.startswith("-L")) :
+        curldir = v[2:]
+
+#Galaxy will often link against the wrong libpython!!!!
+pythondir = sysconfig.get_config_var("LIBDIR")
+
 module1 = Extension('pyBigWig',
                     sources = srcs,
                     libraries = ["m", "z", "curl", libpython],
+                    library_dirs = [pythondir, curldir], 
                     include_dirs = ['libBigWig'])
 
 setup(name = 'pyBigWig',
-       version = '1.0.8',
+       version = '0.1.9',
        description = 'A package for accessing bigWig files using libBigWig',
        author = "Devon P. Ryan",
        author_email = "ryan@ie-freiburg.mpg.de",
