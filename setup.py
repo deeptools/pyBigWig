@@ -15,20 +15,19 @@ else :
     libpython = "python%i.%i" % (sys.version_info[0], sys.version_info[1])
 
 #LIBRARY_PATH is often not set in Galaxy, though curl-config is in the PATH
+additional_libs = [sysconfig.get_config_var("LIBDIR")]
 foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
 foo = foo.strip().split()
-curldir = None
 for v in foo:
-    if(v[0:2] == "-L")) :
-        curldir = v[2:]
+    if(v[0:2] == "-L") :
+        additional_libs.append(v[2:])
 
 #Galaxy will often link against the wrong libpython!!!!
-pythondir = sysconfig.get_config_var("LIBDIR")
 
 module1 = Extension('pyBigWig',
                     sources = srcs,
                     libraries = ["m", "z", "curl", libpython],
-                    library_dirs = [pythondir, curldir], 
+                    library_dirs = additional_libs, 
                     include_dirs = ['libBigWig'])
 
 setup(name = 'pyBigWig',
