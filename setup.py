@@ -19,7 +19,7 @@ foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).com
 foo = foo.strip().split()
 curldir = None
 for v in foo:
-    if(v.startswith("-L")) :
+    if(v[0:2] == "-L")) :
         curldir = v[2:]
 
 #Galaxy will often link against the wrong libpython!!!!
