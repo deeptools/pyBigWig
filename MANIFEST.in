@@ -1,5 +1,5 @@
-include *
+include LICENSE.txt README.md *.c *.h setup.py
 include libBigWig/*
+include galaxy/*
 include pyBigWigTest/*
-exclude .gitignore .gitmodules .travis.yml
-exclude pyBigWig.egg*
+exclude pyBigWig.egg-info/*
