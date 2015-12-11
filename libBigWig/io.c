@@ -66,7 +66,7 @@ size_t url_fread(void *obuf, size_t obufSize, URL_t *URL) {
 //Note that in the case of remote files, the actual amount read may be less than the return value!
 size_t urlRead(URL_t *URL, void *buf, size_t bufSize) {
     if(URL->type==0) {
-        return fread(buf, bufSize, 1, URL->x.fp);
+        return fread(buf, bufSize, 1, URL->x.fp)*bufSize;
     } else {
         return url_fread(buf, bufSize, URL);
     }
@@ -126,7 +126,7 @@ CURLcode urlSeek(URL_t *URL, size_t pos) {
     }
 }
 
-URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*)) {
+URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*), const char *mode) {
     URL_t *URL = calloc(1, sizeof(URL_t));
     if(!URL) return NULL;
     char *url = NULL, *req = NULL;
@@ -135,71 +135,81 @@ URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*)) {
 
     URL->fname = fname;
 
-    //Set the protocol
-    if(strncmp(fname, "http://", 7) == 0) URL->type = BWG_HTTP;
-    else if(strncmp(fname, "https://", 8) == 0) URL->type = BWG_HTTPS;
-    else if(strncmp(fname, "ftp://", 6) == 0) URL->type = BWG_FTP;
-    else URL->type = BWG_FILE;
+    if((!mode) || (strchr(mode, 'w') == 0)) {
+        //Set the protocol
+        if(strncmp(fname, "http://", 7) == 0) URL->type = BWG_HTTP;
+        else if(strncmp(fname, "https://", 8) == 0) URL->type = BWG_HTTPS;
+        else if(strncmp(fname, "ftp://", 6) == 0) URL->type = BWG_FTP;
+        else URL->type = BWG_FILE;
 
-    //local file?
-    if(URL->type == BWG_FILE) {
-        URL->filePos = -1; //This signals that nothing has been read
-        URL->x.fp = fopen(fname, "rb");
-        if(!(URL->x.fp)) {
-            free(URL);
-            fprintf(stderr, "[urlOpen] Couldn't open %s\n", fname);
-            return NULL;
-        }
-    } else {
-        //Remote file, set up the memory buffer and get CURL ready
-        URL->memBuf = malloc(GLOBAL_DEFAULTBUFFERSIZE);
-        if(!(URL->memBuf)) {
-            free(URL);
-            fprintf(stderr, "[urlOpen] Couldn't allocate enough space for the file buffer!\n");
-            return NULL;
-        }
-        URL->bufSize = GLOBAL_DEFAULTBUFFERSIZE;
-        URL->x.curl = curl_easy_init();
-        if(!(URL->x.curl)) {
-            fprintf(stderr, "[urlOpen] curl_easy_init() failed!\n");
-            goto error;
-        }
-        //Follow redirects
-        if(curl_easy_setopt(URL->x.curl, CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
-            fprintf(stderr, "[urlOpen] Failed instructing curl to follow redirects!\n");
-            goto error;
-        }
-        //Set the URL
-        if(curl_easy_setopt(URL->x.curl, CURLOPT_URL, fname) != CURLE_OK) {
-            fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_URL!\n");
-            goto error;
-        }
-        //Set the range, which doesn't do anything for HTTP
-        sprintf(range, "0-%lu", URL->bufSize-1);
-        if(curl_easy_setopt(URL->x.curl, CURLOPT_RANGE, range) != CURLE_OK) {
-            fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_RANGE (%s)!\n", range);
-            goto error;
-        }
-        //Set the callback info, which means we no longer need to directly deal with sockets and header!
-        if(curl_easy_setopt(URL->x.curl, CURLOPT_WRITEFUNCTION, bwFillBuffer) != CURLE_OK) {
-            fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_WRITEFUNCTION!\n");
-            goto error;
-        }
-        if(curl_easy_setopt(URL->x.curl, CURLOPT_WRITEDATA, (void*)URL) != CURLE_OK) {
-            fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_WRITEDATA!\n");
-            goto error;
-        }
-        if(callBack) {
-            code = callBack(URL->x.curl);
+        //local file?
+        if(URL->type == BWG_FILE) {
+            URL->filePos = -1; //This signals that nothing has been read
+            URL->x.fp = fopen(fname, "rb");
+            if(!(URL->x.fp)) {
+                free(URL);
+                fprintf(stderr, "[urlOpen] Couldn't open %s for reading\n", fname);
+                return NULL;
+            }
+        } else {
+            //Remote file, set up the memory buffer and get CURL ready
+            URL->memBuf = malloc(GLOBAL_DEFAULTBUFFERSIZE);
+            if(!(URL->memBuf)) {
+                free(URL);
+                fprintf(stderr, "[urlOpen] Couldn't allocate enough space for the file buffer!\n");
+                return NULL;
+            }
+            URL->bufSize = GLOBAL_DEFAULTBUFFERSIZE;
+            URL->x.curl = curl_easy_init();
+            if(!(URL->x.curl)) {
+                fprintf(stderr, "[urlOpen] curl_easy_init() failed!\n");
+                goto error;
+            }
+            //Follow redirects
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Failed instructing curl to follow redirects!\n");
+                goto error;
+            }
+            //Set the URL
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_URL, fname) != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_URL!\n");
+                goto error;
+            }
+            //Set the range, which doesn't do anything for HTTP
+            sprintf(range, "0-%lu", URL->bufSize-1);
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_RANGE, range) != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_RANGE (%s)!\n", range);
+                goto error;
+            }
+            //Set the callback info, which means we no longer need to directly deal with sockets and header!
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_WRITEFUNCTION, bwFillBuffer) != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_WRITEFUNCTION!\n");
+                goto error;
+            }
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_WRITEDATA, (void*)URL) != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_WRITEDATA!\n");
+                goto error;
+            }
+            if(callBack) {
+                code = callBack(URL->x.curl);
+                if(code != CURLE_OK) {
+                    fprintf(stderr, "[urlOpen] The user-supplied call back function returned an error: %s\n", curl_easy_strerror(code));
+                    goto error;
+                }
+            }
+            code = curl_easy_perform(URL->x.curl);
             if(code != CURLE_OK) {
-                fprintf(stderr, "[urlOpen] The user-supplied call back function returned an error: %s\n", curl_easy_strerror(code));
+                fprintf(stderr, "[urlOpen] curl_easy_perform received an error: %s\n", curl_easy_strerror(code));
                 goto error;
             }
         }
-        code = curl_easy_perform(URL->x.curl);
-        if(code != CURLE_OK) {
-            fprintf(stderr, "[urlOpen] curl_easy_perform received an error: %s\n", curl_easy_strerror(code));
-            goto error;
+    } else {
+        URL->type = BWG_FILE;
+        URL->x.fp = fopen(fname, mode);
+        if(!(URL->x.fp)) {
+            free(URL);
+            fprintf(stderr, "[urlOpen] Couldn't open %s for writing\n", fname);
+            return NULL;
         }
     }
     if(url) free(url);

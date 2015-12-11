@@ -5,6 +5,11 @@
 typedef struct {
     PyObject_HEAD
     bigWigFile_t *bw;
+    int32_t lastTid; //The TID of the last written entry (or -1)
+    uint32_t lastSpan; //The span of the last written entry (if applicable)
+    uint32_t lastStep; //The step of the last written entry (if applicable)
+    uint32_t lastStart; //The next start position (if applicable)
+    int lastType; //The type of the last written entry
 } pyBigWigFile_t;
 
 static PyObject* pyBwOpen(PyObject *self, PyObject *pyFname);
@@ -14,6 +19,10 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kw
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
+
+static void pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+static void pyBwAddEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+
 static void pyBwDealloc(pyBigWigFile_t *pybw);
 
 //The function types aren't actually correct...
@@ -156,6 +165,23 @@ end of 10 specifies the first 10 positions).\n\
 ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224),\n\
  (2, 3, 0.30000001192092896))\n\
 >>> bw.close()"},
+    {"addHeader", (PyCFunction)pyBwAddHeader, METH_VARARGS|METH_KEYWORDS,
+"Adds a header to a file opened for writing. This MUST be called before adding\n\
+any entries.\n\
+\n\
+Positional arguments:\n\
+    cl:    A chromosome list, of the form (('chr1', 1000), ('chr2', 2000), ...).\n\
+           In other words, each element of the list is a tuple containing a\n\
+           chromosome name and its associated length.\n\
+\n\
+Keyword arguments:\n\
+    maxZooms:  The maximum number of zoom levels. The value must be >=0. The\n\
+               default is 10.\n\
+\n\
+some examples"},
+    {"addEntry", (PyCFunction)pyBwAddEntries, METH_VARARGS|METH_KEYWORDS,
+"\n\
+"},
     {NULL, NULL, 0, NULL}
 };
 

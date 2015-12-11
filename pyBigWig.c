@@ -6,21 +6,25 @@
 //Need to add proper error handling rather than just assert()
 PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     char *fname = NULL;
+    char *mode = "r";
     pyBigWigFile_t *pybw;
     bigWigFile_t *bw = NULL;
 
-    if(!PyArg_ParseTuple(pyFname, "s", &fname)) goto error;
+    if(!PyArg_ParseTuple(pyFname, "s|s", &fname, &mode)) goto error;
 
     //Open the local/remote file
-    bw = bwOpen(fname, NULL);
+    bw = bwOpen(fname, NULL, mode);
     if(!bw) goto error;
-
-    //Convert the chromosome list into a python hash
     if(!bw->cl) goto error;
 
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
     if(!pybw) goto error;
     pybw->bw = bw;
+    pybw->lastTid = -1;
+    pybw->lastType = -1;
+    pybw->lastSpan = (uint32_t) -1;
+    pybw->lastStep = (uint32_t) -1;
+    pybw->lastStart = (uint32_t) -1;
     return (PyObject*) pybw;
 
 error:
@@ -269,6 +273,508 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     bwDestroyOverlappingIntervals(intervals);
     Py_INCREF(ret);
     return ret;
+}
+
+//This runs bwCreateHdr, bwCreateChromList, and bwWriteHdr
+static void pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+    bigWigFile_t *bw = self->bw;
+    char **chroms = NULL;
+    int64_t n;
+    uint32_t *lengths = NULL;
+    int32_t maxZooms = 10;
+    long zoomTmp = 10;
+    PyObject *InputTuple = NULL, *tmpObject, *tmpObject2;
+    Py_ssize_t i, pyLen;
+
+    static char *kwd_list[] = {"maxZooms", NULL};
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|k", kwd_list, &InputTuple, &zoomTmp)) {
+        PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
+        return;
+    }
+    maxZooms = zoomTmp;
+
+    //Ensure that we received a list
+    if(!PyList_Check(InputTuple)) {
+        PyErr_SetString(PyExc_RuntimeError, "You MUST input a list of tuples (e.g., [('chr1', 1000), ('chr2', 2000)]!");
+        goto error;
+    }
+    pyLen = PyList_Size(InputTuple);
+    if(pyLen < 1) {
+        PyErr_SetString(PyExc_RuntimeError, "You input an empty list!");
+        goto error;
+    }
+    n = pyLen;
+
+    lengths = calloc(n, sizeof(uint32_t));
+    chroms = calloc(n, sizeof(char*));
+    if(!lengths || !chroms) goto error;
+
+    //Convert the tuple into something more useful in C
+    for(i=0; i<pyLen; i++) {
+        tmpObject = PyList_GetItem(InputTuple, i);
+        if(!tmpObject) goto error;
+        if(!PyTuple_Check(tmpObject)) {
+            PyErr_SetString(PyExc_RuntimeError, "The input list is not made up of tuples!");
+            goto error;
+        }
+        if(PyTuple_Size(tmpObject) != 2) {
+            PyErr_SetString(PyExc_RuntimeError, "One tuple does not contain exactly 2 members!");
+            goto error;
+        }
+
+        //Chromosome
+        tmpObject2 = PyTuple_GetItem(tmpObject, 0);
+        if(!PyString_Check(tmpObject2)) {
+            PyErr_SetString(PyExc_RuntimeError, "The first element of each tuple MUST be a string!");
+            goto error;
+        }
+        chroms[i] = PyString_AsString(tmpObject2);
+        if(!chroms[i]) {
+            PyErr_SetString(PyExc_RuntimeError, "Received something other than a string for a chromosome name!");
+            goto error;
+        }
+
+        //Length
+        tmpObject2 = PyTuple_GetItem(tmpObject, 1);
+        if(!PyLong_Check(tmpObject2)) {
+            PyErr_SetString(PyExc_RuntimeError, "The second element of each tuple MUST be an integer!");
+            goto error;
+        }
+        zoomTmp = PyLong_AsLong(tmpObject2);
+        if(zoomTmp > 0xFFFFFFFF) {
+            PyErr_SetString(PyExc_RuntimeError, "A requested length is longer than what can be stored in a bigWig file!");
+            goto error;
+        }
+        lengths[i] = zoomTmp;
+    }
+
+    //Create the header
+    if(bwCreateHdr(bw, maxZooms)) {
+        PyErr_SetString(PyExc_RuntimeError, "Received an error in bwCreateHdr");
+        goto error;
+    }
+
+    //Create the chromosome list
+    bw->cl = bwCreateChromList(chroms, lengths, n);
+    if(!bw->cl) {
+        PyErr_SetString(PyExc_RuntimeError, "Received an error in bwCreateChromList");
+        goto error;
+    }
+
+    //Write the header
+    if(bwWriteHdr(bw)) {
+        PyErr_SetString(PyExc_RuntimeError, "Received an error while writing the bigWig header");
+        goto error;
+    }
+
+    Py_INCREF(Py_None);
+    return;
+
+error:
+    if(lengths) free(lengths);
+    if(chroms) free(chroms);
+    Py_INCREF(Py_None);
+    return;
+}
+
+//1 on true, 0 on false
+int isType0(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
+    int rv = 0;
+    Py_ssize_t i, sz;
+    PyObject *tmp;
+
+    if(chroms && starts && ends) {
+        if(!PyList_Check(chroms)) return rv;
+        if(!PyList_Check(starts)) return rv;
+        if(!PyList_Check(ends)) return rv;
+        if(!PyList_Check(values)) return rv;
+        sz = PyList_Size(chroms);
+
+        if(sz != PyList_Size(starts)) return rv;
+        if(sz != PyList_Size(ends)) return rv;
+        if(sz != PyList_Size(values)) return rv;
+
+        for(i=0; i<sz; i++) {
+            tmp = PyList_GetItem(chroms, i);
+            if(!PyString_Check(tmp)) return rv;
+            tmp = PyList_GetItem(starts, i);
+            if(!PyLong_Check(tmp)) return rv;
+            tmp = PyList_GetItem(ends, i);
+            if(!PyLong_Check(tmp)) return rv;
+            tmp = PyList_GetItem(values, i);
+            if(!PyFloat_Check(tmp)) return rv;
+        }
+        rv = 1;
+    }
+    return rv;
+}
+
+//single chrom, multiple starts, single span
+int isType1(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span) {
+    int rv = 0;
+    Py_ssize_t i, sz;
+    PyObject *tmp;
+
+    if(span) {
+        if(!PyString_Check(chroms)) return rv;
+        if(!PyList_Check(starts)) return rv;
+        if(!PyList_Check(values)) return rv;
+        if(!PyLong_Check(span)) return rv;
+        sz = PyList_Size(starts);
+
+        if(sz != PyList_Size(values)) return rv;
+
+        for(i=0; i<sz; i++) {
+            tmp = PyList_GetItem(starts, i);
+            if(!PyLong_Check(tmp)) return rv;
+            tmp = PyList_GetItem(values, i);
+            if(!PyFloat_Check(tmp)) return rv;
+        }
+        rv = 1;
+    }
+    return rv;
+}
+
+//Single chrom, single start, single span, single step, multiple values
+int isType2(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span, PyObject *step) {
+    int rv = 0;
+    Py_ssize_t i, sz;
+    PyObject *tmp;
+
+    if(!PyLong_Check(span)) return rv;
+    if(!PyLong_Check(step)) return rv;
+    if(!PyString_Check(chroms)) return rv;
+    if(!PyLong_Check(starts)) return rv;
+
+    sz = PyList_Size(values);
+    for(i=0; i<sz; i++) {
+        tmp = PyList_GetItem(values, i);
+        if(!PyFloat_Check(tmp)) return rv;
+    }
+    rv = 1;
+    return rv;
+}
+
+int getType(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values, PyObject *span, PyObject *step) {
+    if(!chroms) return -1;
+    if(!starts) return -1;
+    if(!values) return -1;
+    if(isType0(chroms, starts, ends, values)) return 0;
+    if(isType1(chroms, starts, values, span)) return 1;
+    if(isType2(chroms, starts, values, span, step)) return 2;
+    return -1;
+}
+
+//1: Can use a bwAppend* function. 0: must use a bwAdd* function
+int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject *starts, PyObject *span, PyObject *step) {
+    bigWigFile_t *bw = self->bw;
+    Py_ssize_t i, sz;
+    uint32_t tid;
+    long tmpLong;
+    PyObject *tmp;
+
+    if(self->lastType == -1) return 0;
+    if(self->lastTid == -1) return 0;
+    if(self->lastType != desiredType) return 0;
+
+    //We can only append if (A) we have the same type or (B) the same chromosome (and compatible span/step/starts
+    if(desiredType == 0) {
+        //We need (A) chrom == lastTid and (B) all chroms to be the same
+        sz = PyList_Size(chroms);
+        for(i=0; i<sz; i++) {
+            tmp = PyList_GetItem(chroms, i);
+            tid = bwGetTid(bw, PyString_AsString(tmp));
+            if(tid != self->lastTid) return 0;
+        }
+        return 1;
+    } else if(desiredType == 1) {
+        //We need (A) chrom == lastTid, (B) all chroms to be the same, and (C) equal spans
+        tmpLong = PyLong_AsLong(span);
+        if(tmpLong != self->lastSpan) return 0;
+        sz = PyList_Size(chroms);
+        for(i=0; i<sz; i++) {
+            tmp = PyList_GetItem(chroms, i);
+            tid = bwGetTid(bw, PyString_AsString(tmp));
+            if(tid != self->lastTid) return 0;
+        }
+        return 1;
+    } else if(desiredType == 2) {
+        //We need (A) chrom == lastTid, (B) span/step to be equal and (C) compatible starts
+        tid = bwGetTid(bw, PyString_AsString(chroms));
+        if(tid != self->lastTid) return 0;
+        tmpLong = PyLong_AsLong(span);
+        if(tmpLong != self->lastSpan) return 0;
+        tmpLong = PyLong_AsLong(step);
+        if(tmpLong != self->lastStep) return 0;
+
+        //But is the start position compatible?
+        tmpLong = PyLong_AsLong(starts);
+        if(tmpLong != self->lastStart) return 0;
+    }
+
+    return 0;
+}
+
+//Returns 0 on success, 1 on error. Sets self->lastTid (unless there was an error)
+int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
+    bigWigFile_t *bw = self->bw;
+    Py_ssize_t i, sz;
+    char **cchroms = NULL;
+    uint32_t n, *ustarts = NULL, *uends = NULL;
+    float *fvalues = NULL;
+    int rv;
+
+    sz = PyList_Size(starts);
+    n = (uint32_t) sz;
+
+    //Allocate space
+    cchroms = calloc(n, sizeof(char*));
+    ustarts = calloc(n, sizeof(uint32_t));
+    uends = calloc(n, sizeof(uint32_t));
+    fvalues = calloc(n, sizeof(float));
+    if(!cchroms || !ustarts || !uends || !fvalues) goto error;
+
+    for(i=0; i<sz; i++) {
+        cchroms[i] = PyString_AsString(PyList_GetItem(chroms, i));
+        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+        uends[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(ends, i));
+        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    }
+
+    rv = bwAddIntervals(bw, cchroms, ustarts, uends, fvalues, n);
+    if(!rv) self->lastTid = bwGetTid(bw, cchroms[sz-1]);
+    free(cchroms);
+    free(ustarts);
+    free(uends);
+    free(fvalues);
+    return rv;
+
+error:
+    if(cchroms) free(cchroms);
+    if(ustarts) free(ustarts);
+    if(uends) free(uends);
+    if(fvalues) free(fvalues);
+    return 1;
+}
+
+//Returns 0 on success, 1 on error. Does nothing with self->lastTid/self->lastType/etc.
+int PyAppendIntervals(pyBigWigFile_t *self, PyObject *starts, PyObject *ends, PyObject *values) {
+    bigWigFile_t *bw = self->bw;
+    Py_ssize_t i, sz;
+    uint32_t n, *ustarts = NULL, *uends = NULL;
+    float *fvalues = NULL;
+    int rv;
+
+    sz = PyList_Size(starts);
+    n = (uint32_t) sz;
+
+    //Allocate space
+    ustarts = calloc(n, sizeof(uint32_t));
+    uends = calloc(n, sizeof(uint32_t));
+    fvalues = calloc(n, sizeof(float));
+    if(!ustarts || !uends || !fvalues) goto error;
+
+    for(i=0; i<sz; i++) {
+        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+        uends[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(ends, i));
+        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    }
+    rv = bwAppendIntervals(bw, ustarts, uends, fvalues, n);
+    free(ustarts);
+    free(uends);
+    free(fvalues);
+    return rv;
+
+error:
+    if(ustarts) free(ustarts);
+    if(uends) free(uends);
+    if(fvalues) free(fvalues);
+    return 1;
+}
+
+//Returns 0 on success, 1 on error. Sets self->lastTid/self->lastSpan (unless there was an error)
+int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span) {
+    bigWigFile_t *bw = self->bw;
+    Py_ssize_t i, sz;
+    char *cchroms = NULL;
+    uint32_t n, *ustarts = NULL, uspan;
+    float *fvalues = NULL;
+    int rv;
+
+    sz = PyList_Size(starts);
+    n = (uint32_t) sz;
+
+    //Allocate space
+    ustarts = calloc(n, sizeof(uint32_t));
+    fvalues = calloc(n, sizeof(float));
+    if(!ustarts || !fvalues) goto error;
+    uspan = (uint32_t) PyLong_AsLong(span);
+    cchroms = PyString_AsString(chroms);
+
+    for(i=0; i<sz; i++) {
+        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    }
+
+    rv = bwAddIntervalSpans(bw, cchroms, ustarts, uspan, fvalues, n);
+    if(!rv) self->lastTid = bwGetTid(bw, cchroms);
+    if(!rv) self->lastSpan = uspan;
+    free(ustarts);
+    free(fvalues);
+    return rv;
+
+error:
+    if(ustarts) free(ustarts);
+    if(fvalues) free(fvalues);
+    return 1;
+}
+
+//Returns 0 on success, 1 on error. Sets nothing
+int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *values) {
+    bigWigFile_t *bw = self->bw;
+    Py_ssize_t i, sz;
+    uint32_t n, *ustarts = NULL;
+    float *fvalues = NULL;
+    int rv;
+
+    sz = PyList_Size(starts);
+    n = (uint32_t) sz;
+
+    //Allocate space
+    ustarts = calloc(n, sizeof(uint32_t));
+    fvalues = calloc(n, sizeof(float));
+    if(!ustarts || !fvalues) goto error;
+
+    for(i=0; i<sz; i++) {
+        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    }
+
+    rv = bwAppendIntervalSpans(bw, ustarts, fvalues, n);
+    free(ustarts);
+    free(fvalues);
+    return rv;
+
+error:
+    if(ustarts) free(ustarts);
+    if(fvalues) free(fvalues);
+    return 1;
+}
+
+//Returns 0 on success, 1 on error. Sets self->lastTid/self->lastSpan/lastStep/lastStart (unless there was an error)
+int PyAddIntervalSpanSteps(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span, PyObject *step) {
+    bigWigFile_t *bw = self->bw;
+    Py_ssize_t i, sz;
+    char *cchrom = NULL;
+    uint32_t n, ustarts, uspan, ustep;
+    float *fvalues = NULL;
+    int rv;
+
+    sz = PyList_Size(values);
+    n = (uint32_t) sz;
+
+    //Allocate space
+    fvalues = calloc(n, sizeof(float));
+    if(!fvalues) goto error;
+    uspan = (uint32_t) PyLong_AsLong(span);
+    ustep = (uint32_t) PyLong_AsLong(step);
+    ustarts = (uint32_t) PyLong_AsLong(starts);
+    cchrom = PyString_AsString(chroms);
+
+    for(i=0; i<sz; i++) fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+
+    rv = bwAddIntervalSpanSteps(bw, cchrom, ustarts, uspan, ustep, fvalues, n);
+    if(!rv) {
+        self->lastTid = bwGetTid(bw, cchrom);
+        self->lastSpan = uspan;
+        self->lastStep = ustep;
+        self->lastStart = ustarts + ustep*n;
+    }
+    free(fvalues);
+    return rv;
+
+error:
+    if(fvalues) free(fvalues);
+    return 1;
+}
+
+//Returns 0 on success, 1 on error. Sets self->lastStart
+int PyAppendIntervalSpanSteps(pyBigWigFile_t *self, PyObject *values) {
+    bigWigFile_t *bw = self->bw;
+    Py_ssize_t i, sz;
+    uint32_t n;
+    float *fvalues = NULL;
+    int rv;
+
+    sz = PyList_Size(values);
+    n = (uint32_t) sz;
+
+    //Allocate space
+    fvalues = calloc(n, sizeof(float));
+    if(!fvalues) goto error;
+
+    for(i=0; i<sz; i++) fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+
+    rv = bwAppendIntervalSpanSteps(bw, fvalues, n);
+    if(!rv) self->lastStart += self->lastStep * n;
+    free(fvalues);
+    return rv;
+
+error:
+    if(fvalues) free(fvalues);
+    return 1;
+}
+
+static void pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+    static char *kwd_list[] = {"end", "value", "span", "step", NULL};
+    PyObject *chroms = NULL, *starts = NULL, *ends = NULL, *values = NULL, *span = NULL, *step = NULL;
+    int desiredType;
+
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "OO|OOOO", kwd_list, &chroms, &starts, &ends, &values, &span, &step)) {
+        PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
+        return;
+    }
+
+    desiredType = getType(chroms, starts, ends, values, span, step);
+    if(desiredType == -1) {
+        PyErr_SetString(PyExc_RuntimeError, "You must provide a valid set of entries. These can be comprised of any of the following: \n"
+"1. A list of each of chromosomes, start positions, end positions and values.\n"
+"2. A list of each of chromosomes, start positions and values. Also, a span must be specified.\n"
+"3. A list values, in which case a single chromosome, start position, span and step must be specified.\n");
+        return;
+    }
+
+    if(canAppend(self, desiredType, chroms, starts, span, step)) {
+        switch(desiredType) {
+            case 0:
+                if(PyAppendIntervals(self, starts, ends, values)) goto error;
+                break;
+            case 1:
+                if(PyAppendIntervalSpans(self, starts, values)) goto error;
+                break;
+            case 2:
+                if(PyAppendIntervalSpanSteps(self, values)) goto error;
+                break;
+        }
+    } else {
+        switch(desiredType) {
+            case 0:
+                if(PyAddIntervals(self, chroms, starts, ends, values)) goto error;
+                break;
+            case 1:
+                if(PyAddIntervalSpans(self, chroms, starts, values, span)) goto error;
+                break;
+            case 2:
+                if(PyAddIntervalSpanSteps(self, chroms, starts, values, span, step)) goto error;
+                break;
+        }
+    }
+
+    return;
+
+error:
+    PyErr_SetString(PyExc_RuntimeError, "Received an error while adding the intervals.");
+    return;
 }
 
 #if PY_MAJOR_VERSION >= 3
