@@ -275,6 +275,17 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     return ret;
 }
 
+#if PY_MAJOR_VERSION >= 3
+//These no longer exist in python3
+int PyString_Check(PyObject *obj) {
+    return PyBytes_Check(obj);
+}
+
+char *PyString_AsString(PyObject *obj) {
+    return PyBytes_AsString(obj);
+}
+#endif
+
 //This runs bwCreateHdr, bwCreateChromList, and bwWriteHdr
 static void pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
