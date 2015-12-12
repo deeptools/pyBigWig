@@ -107,6 +107,10 @@ A file can be closed with a simple `bw.close()`, as is commonly done with other 
 
 Wiggle and BigWig files use 0-based half-open coordinates, which are also used by this extension. So to access the value for the first base on `chr1`, one would specify the starting position as `0` and the end position as `1`. Similarly, bases 100 to 115 would have a start of `99` and an end of `115`. This is simply for the sake of consistency with the underlying bigWig file and may change in the future.
 
+# Galaxy
+
+pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). You can find it in the toolshed as `package_python_2_7_pybigwig_0_1_9`. The [IUC](https://wiki.galaxyproject.org/IUC) is currently hosting the XML definition of this on [github](https://github.com/galaxyproject/tools-iuc/tree/master/packages/package_python_2_7_10_pybigwig_0_1_9).
+
 # To do
 
  - [ ] Use numpy arrays instead of lists? This requires having numpy installed, which seems rather over the top but Fidel might want this for deeptools.
