@@ -15,7 +15,9 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     //Open the local/remote file
     bw = bwOpen(fname, NULL, mode);
     if(!bw) goto error;
-    if(!bw->cl) goto error;
+    if(!mode || !strchr(mode, 'w')) {
+        if(!bw->cl) goto error;
+    }
 
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
     if(!pybw) goto error;
@@ -28,7 +30,7 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     return (PyObject*) pybw;
 
 error:
-    bwClose(bw);
+    if(bw) bwClose(bw);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -284,10 +286,19 @@ int PyString_Check(PyObject *obj) {
 char *PyString_AsString(PyObject *obj) {
     return PyBytes_AsString(obj);
 }
+
+int PyInt_Check(PyObject *obj) {
+    return PyLong_Check(obj);
+}
+
+//bigWig files only support uint32_t positions, so this will be larger
+long PyInt_AsLong(PyObject *obj) {
+    return PyLong_AsLong(obj);
+}
 #endif
 
 //This runs bwCreateHdr, bwCreateChromList, and bwWriteHdr
-static void pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
     char **chroms = NULL;
     int64_t n;
@@ -300,7 +311,7 @@ static void pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) 
     static char *kwd_list[] = {"maxZooms", NULL};
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|k", kwd_list, &InputTuple, &zoomTmp)) {
         PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
-        return;
+        return NULL;
     }
     maxZooms = zoomTmp;
 
@@ -318,12 +329,18 @@ static void pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) 
 
     lengths = calloc(n, sizeof(uint32_t));
     chroms = calloc(n, sizeof(char*));
-    if(!lengths || !chroms) goto error;
+    if(!lengths || !chroms) {
+        PyErr_SetString(PyExc_RuntimeError, "Couldn't allocate lengths or chroms!");
+        goto error;
+    }
 
     //Convert the tuple into something more useful in C
     for(i=0; i<pyLen; i++) {
         tmpObject = PyList_GetItem(InputTuple, i);
-        if(!tmpObject) goto error;
+        if(!tmpObject) {
+            PyErr_SetString(PyExc_RuntimeError, "Couldn't get a tuple!");
+            goto error;
+        }
         if(!PyTuple_Check(tmpObject)) {
             PyErr_SetString(PyExc_RuntimeError, "The input list is not made up of tuples!");
             goto error;
@@ -347,11 +364,11 @@ static void pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) 
 
         //Length
         tmpObject2 = PyTuple_GetItem(tmpObject, 1);
-        if(!PyLong_Check(tmpObject2)) {
+        if(!PyInt_Check(tmpObject2)) {
             PyErr_SetString(PyExc_RuntimeError, "The second element of each tuple MUST be an integer!");
             goto error;
         }
-        zoomTmp = PyLong_AsLong(tmpObject2);
+        zoomTmp = PyInt_AsLong(tmpObject2);
         if(zoomTmp > 0xFFFFFFFF) {
             PyErr_SetString(PyExc_RuntimeError, "A requested length is longer than what can be stored in a bigWig file!");
             goto error;
@@ -379,13 +396,12 @@ static void pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) 
     }
 
     Py_INCREF(Py_None);
-    return;
+    return Py_None;
 
 error:
     if(lengths) free(lengths);
     if(chroms) free(chroms);
-    Py_INCREF(Py_None);
-    return;
+    return NULL;
 }
 
 //1 on true, 0 on false
@@ -409,9 +425,9 @@ int isType0(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values
             tmp = PyList_GetItem(chroms, i);
             if(!PyString_Check(tmp)) return rv;
             tmp = PyList_GetItem(starts, i);
-            if(!PyLong_Check(tmp)) return rv;
+            if(!PyInt_Check(tmp)) return rv;
             tmp = PyList_GetItem(ends, i);
-            if(!PyLong_Check(tmp)) return rv;
+            if(!PyInt_Check(tmp)) return rv;
             tmp = PyList_GetItem(values, i);
             if(!PyFloat_Check(tmp)) return rv;
         }
@@ -430,14 +446,14 @@ int isType1(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span
         if(!PyString_Check(chroms)) return rv;
         if(!PyList_Check(starts)) return rv;
         if(!PyList_Check(values)) return rv;
-        if(!PyLong_Check(span)) return rv;
+        if(!PyInt_Check(span)) return rv;
         sz = PyList_Size(starts);
 
         if(sz != PyList_Size(values)) return rv;
 
         for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(starts, i);
-            if(!PyLong_Check(tmp)) return rv;
+            if(!PyInt_Check(tmp)) return rv;
             tmp = PyList_GetItem(values, i);
             if(!PyFloat_Check(tmp)) return rv;
         }
@@ -452,10 +468,10 @@ int isType2(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span
     Py_ssize_t i, sz;
     PyObject *tmp;
 
-    if(!PyLong_Check(span)) return rv;
-    if(!PyLong_Check(step)) return rv;
+    if(!PyInt_Check(span)) return rv;
+    if(!PyInt_Check(step)) return rv;
     if(!PyString_Check(chroms)) return rv;
-    if(!PyLong_Check(starts)) return rv;
+    if(!PyInt_Check(starts)) return rv;
 
     sz = PyList_Size(values);
     for(i=0; i<sz; i++) {
@@ -470,9 +486,9 @@ int getType(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values
     if(!chroms) return -1;
     if(!starts) return -1;
     if(!values) return -1;
-    if(isType0(chroms, starts, ends, values)) return 0;
-    if(isType1(chroms, starts, values, span)) return 1;
-    if(isType2(chroms, starts, values, span, step)) return 2;
+    if(chroms && starts && ends && values && isType0(chroms, starts, ends, values)) return 0;
+    if(chroms && starts && span && values && isType1(chroms, starts, values, span)) return 1;
+    if(chroms && starts && values && span && step && isType2(chroms, starts, values, span, step)) return 2;
     return -1;
 }
 
@@ -500,7 +516,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         return 1;
     } else if(desiredType == 1) {
         //We need (A) chrom == lastTid, (B) all chroms to be the same, and (C) equal spans
-        tmpLong = PyLong_AsLong(span);
+        tmpLong = PyInt_AsLong(span);
         if(tmpLong != self->lastSpan) return 0;
         sz = PyList_Size(chroms);
         for(i=0; i<sz; i++) {
@@ -513,13 +529,13 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         //We need (A) chrom == lastTid, (B) span/step to be equal and (C) compatible starts
         tid = bwGetTid(bw, PyString_AsString(chroms));
         if(tid != self->lastTid) return 0;
-        tmpLong = PyLong_AsLong(span);
+        tmpLong = PyInt_AsLong(span);
         if(tmpLong != self->lastSpan) return 0;
-        tmpLong = PyLong_AsLong(step);
+        tmpLong = PyInt_AsLong(step);
         if(tmpLong != self->lastStep) return 0;
 
         //But is the start position compatible?
-        tmpLong = PyLong_AsLong(starts);
+        tmpLong = PyInt_AsLong(starts);
         if(tmpLong != self->lastStart) return 0;
     }
 
@@ -736,14 +752,14 @@ error:
     return 1;
 }
 
-static void pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
-    static char *kwd_list[] = {"end", "value", "span", "step", NULL};
+PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+    static char *kwd_list[] = {"chroms", "starts", "ends", "values", "span", "step", NULL};
     PyObject *chroms = NULL, *starts = NULL, *ends = NULL, *values = NULL, *span = NULL, *step = NULL;
     int desiredType;
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "OO|OOOO", kwd_list, &chroms, &starts, &ends, &values, &span, &step)) {
         PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
-        return;
+        return NULL;
     }
 
     desiredType = getType(chroms, starts, ends, values, span, step);
@@ -752,7 +768,7 @@ static void pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds)
 "1. A list of each of chromosomes, start positions, end positions and values.\n"
 "2. A list of each of chromosomes, start positions and values. Also, a span must be specified.\n"
 "3. A list values, in which case a single chromosome, start position, span and step must be specified.\n");
-        return;
+        return NULL;
     }
 
     if(canAppend(self, desiredType, chroms, starts, span, step)) {
@@ -781,11 +797,12 @@ static void pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds)
         }
     }
 
-    return;
+    Py_INCREF(Py_None);
+    return Py_None;
 
 error:
     PyErr_SetString(PyExc_RuntimeError, "Received an error while adding the intervals.");
-    return;
+    return NULL;
 }
 
 #if PY_MAJOR_VERSION >= 3

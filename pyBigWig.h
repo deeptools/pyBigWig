@@ -19,10 +19,8 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kw
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
-
-static void pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
-static void pyBwAddEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
-
+static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+static PyObject *pyBwAddEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static void pyBwDealloc(pyBigWigFile_t *pybw);
 
 //The function types aren't actually correct...
@@ -179,7 +177,7 @@ Keyword arguments:\n\
                default is 10.\n\
 \n\
 some examples"},
-    {"addEntry", (PyCFunction)pyBwAddEntries, METH_VARARGS|METH_KEYWORDS,
+    {"addEntries", (PyCFunction)pyBwAddEntries, METH_VARARGS|METH_KEYWORDS,
 "\n\
 "},
     {NULL, NULL, 0, NULL}
