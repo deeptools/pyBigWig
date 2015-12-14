@@ -19,7 +19,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kw
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
-static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwAddEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static void pyBwDealloc(pyBigWigFile_t *pybw);
 
@@ -163,7 +163,7 @@ end of 10 specifies the first 10 positions).\n\
 ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224),\n\
  (2, 3, 0.30000001192092896))\n\
 >>> bw.close()"},
-    {"addHeader", (PyCFunction)pyBwAddHeader, METH_VARARGS|METH_KEYWORDS,
+    {"addHeader", (PyCFunction)pyBwAddHeader, METH_VARARGS,
 "Adds a header to a file opened for writing. This MUST be called before adding\n\
 any entries.\n\
 \n\

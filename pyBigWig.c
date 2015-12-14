@@ -286,30 +286,45 @@ int PyString_Check(PyObject *obj) {
 char *PyString_AsString(PyObject *obj) {
     return PyBytes_AsString(obj);
 }
+#endif
 
-int PyInt_Check(PyObject *obj) {
+//Will return 1 for long or int types currently
+int isNumeric(PyObject *obj) {
+#if PY_MAJOR_VERSION < 3
+    if(PyInt_Check(obj)) return 1;
+#endif
     return PyLong_Check(obj);
 }
 
-//bigWig files only support uint32_t positions, so this will be larger
-long PyInt_AsLong(PyObject *obj) {
-    return PyLong_AsLong(obj);
-}
+//On error, throws a runtime error, so use PyErr_Occurred() after this
+uint32_t Numeric2Uint(PyObject *obj) {
+    long l;
+#if PY_MAJOR_VERSION < 3
+    if(PyInt_Check(obj)) {
+        return (uint32_t) PyInt_AsLong(obj);
+    }
 #endif
+    l = PyLong_AsLong(obj);
+    //Check bounds
+    if(l > 0xFFFFFFFF) {
+        PyErr_SetString(PyExc_RuntimeError, "Length out of bounds for a bigWig file!");
+        return (uint32_t) -1;
+    }
+    return (uint32_t) l;
+}
 
 //This runs bwCreateHdr, bwCreateChromList, and bwWriteHdr
-PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
     char **chroms = NULL;
     int64_t n;
-    uint32_t *lengths = NULL;
+    uint32_t *lengths = NULL, len;
     int32_t maxZooms = 10;
     long zoomTmp = 10;
     PyObject *InputTuple = NULL, *tmpObject, *tmpObject2;
     Py_ssize_t i, pyLen;
 
-    static char *kwd_list[] = {"maxZooms", NULL};
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|k", kwd_list, &InputTuple, &zoomTmp)) {
+    if(!PyArg_ParseTuple(args, "O|k", &InputTuple, &zoomTmp)) {
         PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
         return NULL;
     }
@@ -351,7 +366,7 @@ PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
         }
 
         //Chromosome
-        tmpObject2 = PyTuple_GetItem(tmpObject, 0);
+        tmpObject2 = PyTuple_GetItem(tmpObject, 0); //This returns NULL in python3?!?
         if(!PyString_Check(tmpObject2)) {
             PyErr_SetString(PyExc_RuntimeError, "The first element of each tuple MUST be a string!");
             goto error;
@@ -364,16 +379,17 @@ PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
 
         //Length
         tmpObject2 = PyTuple_GetItem(tmpObject, 1);
-        if(!PyInt_Check(tmpObject2)) {
+        if(!isNumeric(tmpObject2)) {
             PyErr_SetString(PyExc_RuntimeError, "The second element of each tuple MUST be an integer!");
             goto error;
         }
-        zoomTmp = PyInt_AsLong(tmpObject2);
+        len = Numeric2Uint(tmpObject2);
+        if(PyErr_Occurred()) goto error;
         if(zoomTmp > 0xFFFFFFFF) {
             PyErr_SetString(PyExc_RuntimeError, "A requested length is longer than what can be stored in a bigWig file!");
             goto error;
         }
-        lengths[i] = zoomTmp;
+        lengths[i] = len;
     }
 
     //Create the header
@@ -425,9 +441,9 @@ int isType0(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values
             tmp = PyList_GetItem(chroms, i);
             if(!PyString_Check(tmp)) return rv;
             tmp = PyList_GetItem(starts, i);
-            if(!PyInt_Check(tmp)) return rv;
+            if(!isNumeric(tmp)) return rv;
             tmp = PyList_GetItem(ends, i);
-            if(!PyInt_Check(tmp)) return rv;
+            if(!isNumeric(tmp)) return rv;
             tmp = PyList_GetItem(values, i);
             if(!PyFloat_Check(tmp)) return rv;
         }
@@ -446,14 +462,14 @@ int isType1(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span
         if(!PyString_Check(chroms)) return rv;
         if(!PyList_Check(starts)) return rv;
         if(!PyList_Check(values)) return rv;
-        if(!PyInt_Check(span)) return rv;
+        if(!isNumeric(span)) return rv;
         sz = PyList_Size(starts);
 
         if(sz != PyList_Size(values)) return rv;
 
         for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(starts, i);
-            if(!PyInt_Check(tmp)) return rv;
+            if(!isNumeric(tmp)) return rv;
             tmp = PyList_GetItem(values, i);
             if(!PyFloat_Check(tmp)) return rv;
         }
@@ -468,10 +484,10 @@ int isType2(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span
     Py_ssize_t i, sz;
     PyObject *tmp;
 
-    if(!PyInt_Check(span)) return rv;
-    if(!PyInt_Check(step)) return rv;
+    if(!isNumeric(span)) return rv;
+    if(!isNumeric(step)) return rv;
     if(!PyString_Check(chroms)) return rv;
-    if(!PyInt_Check(starts)) return rv;
+    if(!isNumeric(starts)) return rv;
 
     sz = PyList_Size(values);
     for(i=0; i<sz; i++) {
@@ -496,8 +512,7 @@ int getType(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values
 int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject *starts, PyObject *span, PyObject *step) {
     bigWigFile_t *bw = self->bw;
     Py_ssize_t i, sz;
-    uint32_t tid;
-    long tmpLong;
+    uint32_t tid, uspan, ustep, ustart;
     PyObject *tmp;
 
     if(self->lastType == -1) return 0;
@@ -516,8 +531,9 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         return 1;
     } else if(desiredType == 1) {
         //We need (A) chrom == lastTid, (B) all chroms to be the same, and (C) equal spans
-        tmpLong = PyInt_AsLong(span);
-        if(tmpLong != self->lastSpan) return 0;
+        uspan = Numeric2Uint(span);
+        if(PyErr_Occurred()) return 0;
+        if(uspan != self->lastSpan) return 0;
         sz = PyList_Size(chroms);
         for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(chroms, i);
@@ -529,14 +545,17 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         //We need (A) chrom == lastTid, (B) span/step to be equal and (C) compatible starts
         tid = bwGetTid(bw, PyString_AsString(chroms));
         if(tid != self->lastTid) return 0;
-        tmpLong = PyInt_AsLong(span);
-        if(tmpLong != self->lastSpan) return 0;
-        tmpLong = PyInt_AsLong(step);
-        if(tmpLong != self->lastStep) return 0;
+        uspan = Numeric2Uint(span);
+        if(PyErr_Occurred()) return 0;
+        if(uspan != self->lastSpan) return 0;
+        ustep = Numeric2Uint(step);
+        if(PyErr_Occurred()) return 0;
+        if(ustep != self->lastStep) return 0;
 
         //But is the start position compatible?
-        tmpLong = PyInt_AsLong(starts);
-        if(tmpLong != self->lastStart) return 0;
+        ustart = Numeric2Uint(starts);
+        if(PyErr_Occurred()) return 0;
+        if(ustart != self->lastStart) return 0;
     }
 
     return 0;

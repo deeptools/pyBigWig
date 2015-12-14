@@ -43,34 +43,32 @@ class TestRemote():
         for k,v in bw.chroms().items():
             chroms.append((k, v))
         assert(len(chroms) == 2)
-        print("5")
         bw2.addHeader(chroms)
-        print("6")
         #Copy the input file
-        #for c in chroms:
-        #    ints = bw.intervals(c[0])
-        #    chroms2 = []
-        #    starts = []
-        #    ends = []
-        #    values = []
-        #    for entry in ints:
-        #        chroms2.append(c)
-        #        starts.append(entry[0])
-        #        ends.append(entry[1])
-        #        values.append(entry[2])
-        #    bw2.addEntries(chroms2, starts, ends=ends, values=values)
-        #bw2.close()
-        ##Ensure that the copied file has the same entries and max/min/etc.
-        #bw2 = pyBigWig.open(oname)
-        #assert(bw.header() == bw2.header())
-        #assert(bw.chroms() == bw2.chroms())
-        #for c in chroms:
-        #    ints1 = bw.intervals(c[0])
-        #    ints2 = bw2.intervals(c[0])
-        #    assert(ints1 == ints2)
-        #bw1.close()
-        #bw2.close()
-        ##Clean up
+        for c in chroms:
+            ints = bw.intervals(c[0])
+            chroms2 = []
+            starts = []
+            ends = []
+            values = []
+            for entry in ints:
+                chroms2.append(c[0])
+                starts.append(entry[0])
+                ends.append(entry[1])
+                values.append(entry[2])
+            bw2.addEntries(chroms2, starts, ends=ends, values=values)
+        bw2.close()
+        #Ensure that the copied file has the same entries and max/min/etc.
+        bw2 = pyBigWig.open(oname)
+        assert(bw.header() == bw2.header())
+        assert(bw.chroms() == bw2.chroms())
+        for c in chroms:
+            ints1 = bw.intervals(c[0])
+            ints2 = bw2.intervals(c[0])
+            assert(ints1 == ints2)
+        bw.close()
+        bw2.close()
+        #Clean up
         os.remove(oname)
 
     def testAll(self):
