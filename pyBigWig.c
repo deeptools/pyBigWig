@@ -278,13 +278,17 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 }
 
 #if PY_MAJOR_VERSION >= 3
-//These no longer exist in python3
+//Return 1 iff obj is a ready unicode type
 int PyString_Check(PyObject *obj) {
-    return PyBytes_Check(obj);
+    if(PyUnicode_Check(obj)) {
+        return PyUnicode_READY(obj)+1;
+    }
+    return 0;
 }
 
+//I don't know what happens if PyBytes_AsString(NULL) is used...
 char *PyString_AsString(PyObject *obj) {
-    return PyBytes_AsString(obj);
+    return PyBytes_AsString(PyUnicode_AsASCIIString(obj));
 }
 #endif
 

@@ -1188,7 +1188,12 @@ int bwFinalize(bigWigFile_t *fp) {
     if(flushBuffer(fp)) return 1; //Valgrind reports a problem here!
 
     //Update the data section with the number of blocks written
-    if(writeAtPos(&(fp->writeBuffer->nBlocks), sizeof(uint64_t), 1, fp->hdr->dataOffset, fp->URL->x.fp)) return 2;
+    if(fp->hdr) {
+        if(writeAtPos(&(fp->writeBuffer->nBlocks), sizeof(uint64_t), 1, fp->hdr->dataOffset, fp->URL->x.fp)) return 2;
+    } else {
+        //The header was never written!
+        return 1;
+    }
 
     //write the bufferSize
     if(fp->hdr->bufSize) {
