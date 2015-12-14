@@ -39,10 +39,9 @@ class TestRemote():
         ofile.close()
         bw2 = pyBigWig.open(oname, "w")
         assert(bw2 is not None)
-        chroms = []
-        for k,v in bw.chroms().items():
-            chroms.append((k, v))
-        assert(len(chroms) == 2)
+        #Since this is an unordered dict(), iterating over the items can swap the order!
+        chroms = [("1", bw.chroms("1")), ("10", bw.chroms("10"))]
+        assert(len(bw.chroms()) == 2)
         bw2.addHeader(chroms)
         #Copy the input file
         for c in chroms:
