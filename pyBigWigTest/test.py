@@ -1,6 +1,7 @@
 import pyBigWig
 import tempfile
 import os
+import hashlib
 
 class TestRemote():
     fname = "https://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
@@ -70,6 +71,42 @@ class TestRemote():
         #Clean up
         os.remove(oname)
 
+    def doWrite2(self):
+        '''
+        Test all three modes of storing entries. Also test to ensure that we get error messages when doing something silly
+
+        This is a modified version of the writing example from libBigWig
+        '''
+        chroms = ["1"]*12
+        starts = [0, 100, 125, 200, 220, 230, 500, 600, 625, 700, 800, 850]
+        ends = [5, 120, 126, 205, 226, 231]
+        values = [0.0, 1.0, 200.0, -2.0, 150.0, 25.0, 0.0, 1.0, 200.0, -2.0, 150.0, 25.0, -5.0, -20.0, 25.0, -5.0, -20.0, 25.0]
+        ofile = tempfile.NamedTemporaryFile(delete=False)
+        oname = ofile.name
+        ofile.close()
+        bw = pyBigWig.open(oname, "w")
+        bw.addHeader([("1", 1000000), ("2", 1500000)])
+        bw.addEntries(chroms[0:3], starts[0:3], ends=ends[0:3], values=values[0:3])
+        #This should append to the previous block
+        bw.addEntries(chroms[3:6], starts[3:6], ends=ends[3:6], values=values[3:6])
+
+        #IntervalSpans
+        bw.addEntries("1", starts[6:9], values=values[6:9], span=20)
+        bw.addEntries("1", starts[9:12], values=values[9:12], span=20)
+
+        #IntervalSpanSteps, this should instead take an int
+        bw.addEntries("1", 900, values=values[12:15], span=20, step=30)
+        bw.addEntries("1", 960, values=values[15:18], span=20, step=30)
+
+        #Add a few intervals on a new chromosome
+        bw.addEntries(["2"]*3, starts[0:3], ends=ends[0:3], values=values[0:3])
+        bw.close()
+        #check md5sum, this is the simplest method to check correctness
+        h = hashlib.md5(open(oname, "rb").read()).hexdigest()
+        assert(h=="e12da845d75b7d92ab41451c07884e81")
+        #Clean up
+        os.remove(oname)
+
     def testAll(self):
         bw = self.doOpen()
         self.doChroms(bw)
@@ -78,6 +115,8 @@ class TestRemote():
         self.doValues(bw)
         self.doIntervals(bw)
         self.doWrite(bw)
+        if self.fname == "pyBigWigTest/test.bw":
+            self.doWrite2()
         bw.close()
 
 class TestLocal():

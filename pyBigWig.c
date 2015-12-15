@@ -565,7 +565,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
     return 0;
 }
 
-//Returns 0 on success, 1 on error. Sets self->lastTid (unless there was an error)
+//Returns 0 on success, 1 on error. Sets self->lastTid && self->lastStart (unless there was an error)
 int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
     Py_ssize_t i, sz;
@@ -592,7 +592,10 @@ int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyO
     }
 
     rv = bwAddIntervals(bw, cchroms, ustarts, uends, fvalues, n);
-    if(!rv) self->lastTid = bwGetTid(bw, cchroms[sz-1]);
+    if(!rv) {
+        self->lastTid = bwGetTid(bw, cchroms[n-1]);
+        self->lastStart = uends[n-1];
+    }
     free(cchroms);
     free(ustarts);
     free(uends);
@@ -607,7 +610,7 @@ error:
     return 1;
 }
 
-//Returns 0 on success, 1 on error. Does nothing with self->lastTid/self->lastType/etc.
+//Returns 0 on success, 1 on error. Update self->lastStart
 int PyAppendIntervals(pyBigWigFile_t *self, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
     Py_ssize_t i, sz;
@@ -630,6 +633,7 @@ int PyAppendIntervals(pyBigWigFile_t *self, PyObject *starts, PyObject *ends, Py
         fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
     }
     rv = bwAppendIntervals(bw, ustarts, uends, fvalues, n);
+    if(rv) self->lastStart = uends[n-1];
     free(ustarts);
     free(uends);
     free(fvalues);
@@ -642,7 +646,7 @@ error:
     return 1;
 }
 
-//Returns 0 on success, 1 on error. Sets self->lastTid/self->lastSpan (unless there was an error)
+//Returns 0 on success, 1 on error. Sets self->lastTid/lastStart/lastSpan (unless there was an error)
 int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span) {
     bigWigFile_t *bw = self->bw;
     Py_ssize_t i, sz;
@@ -667,8 +671,11 @@ int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts,
     }
 
     rv = bwAddIntervalSpans(bw, cchroms, ustarts, uspan, fvalues, n);
-    if(!rv) self->lastTid = bwGetTid(bw, cchroms);
-    if(!rv) self->lastSpan = uspan;
+    if(!rv) {
+        self->lastTid = bwGetTid(bw, cchroms);
+        self->lastSpan = uspan;
+        self->lastStart = ustarts[n-1]+uspan;
+    }
     free(ustarts);
     free(fvalues);
     return rv;
@@ -679,7 +686,7 @@ error:
     return 1;
 }
 
-//Returns 0 on success, 1 on error. Sets nothing
+//Returns 0 on success, 1 on error. Updates self->lastStart
 int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *values) {
     bigWigFile_t *bw = self->bw;
     Py_ssize_t i, sz;
@@ -701,6 +708,7 @@ int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *valu
     }
 
     rv = bwAppendIntervalSpans(bw, ustarts, fvalues, n);
+    if(rv) self->lastStart = ustarts[n-1] + self->lastSpan;
     free(ustarts);
     free(fvalues);
     return rv;
