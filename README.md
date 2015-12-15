@@ -113,6 +113,5 @@ pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). Y
 
 # To do
 
- - [ ] Use numpy arrays instead of lists? This requires having numpy installed, which seems rather over the top but Fidel might want this for deeptools.
- - [ ] Writer functions? It's unclear how much these would even be used.
+ - [ ] Add writer example to this file.
  - [ ] The global curl cleanup stuff isn't being done at all currently.
