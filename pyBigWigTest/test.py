@@ -77,7 +77,7 @@ class TestRemote():
 
         This is a modified version of the writing example from libBigWig
         '''
-        chroms = ["1"]*12
+        chroms = ["1"]*6
         starts = [0, 100, 125, 200, 220, 230, 500, 600, 625, 700, 800, 850]
         ends = [5, 120, 126, 205, 226, 231]
         values = [0.0, 1.0, 200.0, -2.0, 150.0, 25.0, 0.0, 1.0, 200.0, -2.0, 150.0, 25.0, -5.0, -20.0, 25.0, -5.0, -20.0, 25.0]
@@ -86,8 +86,9 @@ class TestRemote():
         ofile.close()
         bw = pyBigWig.open(oname, "w")
         bw.addHeader([("1", 1000000), ("2", 1500000)])
+
+        #Intervals
         bw.addEntries(chroms[0:3], starts[0:3], ends=ends[0:3], values=values[0:3])
-        #This should append to the previous block
         bw.addEntries(chroms[3:6], starts[3:6], ends=ends[3:6], values=values[3:6])
 
         #IntervalSpans
@@ -96,14 +97,36 @@ class TestRemote():
 
         #IntervalSpanSteps, this should instead take an int
         bw.addEntries("1", 900, values=values[12:15], span=20, step=30)
-        bw.addEntries("1", 960, values=values[15:18], span=20, step=30)
+        bw.addEntries("1", 990, values=values[15:18], span=20, step=30)
+
+        #Attempt to add incorrect values. These MUST raise an exception
+        try:
+            bw.addEntries(chroms[0:3], starts[0:3], ends=ends[0:3], values=values[0:3])
+            assert(1==0)
+        except RuntimeError:
+            pass
+        try:
+            bw.addEntries("1", starts[6:9], values=values[6:9], span=20)
+            assert(1==0)
+        except RuntimeError:
+            pass
+        try:
+            bw.addEntries("3", starts[6:9], values=values[6:9], span=20)
+            assert(1==0)
+        except RuntimeError:
+            pass
+        try:
+            bw.addEntries("1", 900, values=values[12:15], span=20, step=30)
+            assert(1==0)
+        except RuntimeError:
+            pass
 
         #Add a few intervals on a new chromosome
         bw.addEntries(["2"]*3, starts[0:3], ends=ends[0:3], values=values[0:3])
         bw.close()
         #check md5sum, this is the simplest method to check correctness
         h = hashlib.md5(open(oname, "rb").read()).hexdigest()
-        assert(h=="e12da845d75b7d92ab41451c07884e81")
+        assert(h=="b1ca91d2ff42afdd2efa19a007c1ded4")
         #Clean up
         os.remove(oname)
 

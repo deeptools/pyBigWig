@@ -532,18 +532,22 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
             tid = bwGetTid(bw, PyString_AsString(tmp));
             if(tid != self->lastTid) return 0;
         }
+        ustart = Numeric2Uint(PyList_GetItem(starts, 0));
+        if(PyErr_Occurred()) return 0;
+        if(ustart < self->lastStart) return 0;
         return 1;
     } else if(desiredType == 1) {
         //We need (A) chrom == lastTid, (B) all chroms to be the same, and (C) equal spans
         uspan = Numeric2Uint(span);
         if(PyErr_Occurred()) return 0;
         if(uspan != self->lastSpan) return 0;
-        sz = PyList_Size(chroms);
-        for(i=0; i<sz; i++) {
-            tmp = PyList_GetItem(chroms, i);
-            tid = bwGetTid(bw, PyString_AsString(tmp));
-            if(tid != self->lastTid) return 0;
-        }
+        if(!PyString_Check(chroms)) return 0;
+        tid = bwGetTid(bw, PyString_AsString(chroms));
+        if(tid != self->lastTid) return 0;
+
+        ustart = Numeric2Uint(PyList_GetItem(starts, 0));
+        if(PyErr_Occurred()) return 0;
+        if(ustart < self->lastStart) return 0;
         return 1;
     } else if(desiredType == 2) {
         //We need (A) chrom == lastTid, (B) span/step to be equal and (C) compatible starts
@@ -783,12 +787,94 @@ error:
     return 1;
 }
 
+//Checks and ensures that (A) the entries are sorted correctly and don't overlap and (B) that the come after things that have already been added.
+//Returns 1 on correct input, 0 on incorrect input
+int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *span, PyObject *step, int type) {
+    uint32_t lastTid = self->lastTid;
+    uint32_t lastEnd = self->lastStart;
+    uint32_t cTid, ustart, uend, uspan, ustep;
+    Py_ssize_t i, sz;
+    PyObject *chrom;
+
+    if(type == 0) {
+        //Each chrom:start-end needs to be properly formed and come after prior entries
+        sz = PyList_Size(starts);
+        if(sz == 0) return 0;
+        for(i=0; i<sz; i++) {
+            chrom = PyList_GetItem(chroms, i);
+            cTid = bwGetTid(self->bw, PyString_AsString(chrom));
+            if(cTid == (uint32_t) -1) return 0;
+            ustart = Numeric2Uint(PyList_GetItem(starts, i));
+            if(PyErr_Occurred()) return 0;
+            uend = Numeric2Uint(PyList_GetItem(ends, i));
+            if(PyErr_Occurred()) return 0;
+
+            if(ustart >= uend) return 0;
+            if(lastTid != (uint32_t) -1) {
+                if(lastTid > cTid) return 0;
+                if(lastTid == cTid) {
+                    if(ustart < lastEnd) return 0;
+                }
+            }
+            lastTid = cTid;
+            lastEnd = uend;
+        }
+        return 1;
+    } else if(type == 1) {
+        //each chrom:start-(start+span) needs to be properly formed and come after prior entries
+        if(!PyList_Check(starts)) return 0;
+        sz = PyList_Size(starts);
+        uspan = Numeric2Uint(span);
+        if(PyErr_Occurred()) return 0;
+        if(uspan < 1) return 0;
+        if(sz == 0) return 0;
+        cTid = bwGetTid(self->bw, PyString_AsString(chroms));
+        if(cTid == (uint32_t) -1) return 0;
+        if(lastTid != (uint32_t) -1) {
+            if(lastTid > cTid) return 0;
+        }
+        for(i=0; i<sz; i++) {
+            ustart = Numeric2Uint(PyList_GetItem(starts, i));
+            if(PyErr_Occurred()) return 0;
+            uend = ustart + uspan;
+
+            if(lastTid == cTid) {
+                if(ustart < lastEnd) return 0;
+            }
+            lastTid = cTid;
+            lastEnd = uend;
+        }
+        return 1;
+    } else if(type == 2) {
+        //The chrom and start need to be appropriate
+        cTid = bwGetTid(self->bw, PyString_AsString(chroms));
+        if(cTid == (uint32_t) -1) return 0;
+        ustart = Numeric2Uint(starts);
+        if(PyErr_Occurred()) return 0;
+        uspan = Numeric2Uint(span);
+        if(PyErr_Occurred()) return 0;
+        if(uspan < 1) return 0;
+        ustep = Numeric2Uint(step);
+        if(PyErr_Occurred()) return 0;
+        if(ustep < 1) return 0;
+        if(lastTid != (uint32_t) -1) {
+            if(lastTid > cTid) return 0;
+            if(lastTid == cTid) {
+                if(ustart < lastEnd) return 0;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
+
 PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
-    static char *kwd_list[] = {"chroms", "starts", "ends", "values", "span", "step", NULL};
+    static char *kwd_list[] = {"chroms", "starts", "ends", "values", "span", "step", "validate", NULL};
     PyObject *chroms = NULL, *starts = NULL, *ends = NULL, *values = NULL, *span = NULL, *step = NULL;
+    PyObject *validate = Py_True;
     int desiredType;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "OO|OOOO", kwd_list, &chroms, &starts, &ends, &values, &span, &step)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "OO|OOOOO", kwd_list, &chroms, &starts, &ends, &values, &span, &step, &validate)) {
         PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
         return NULL;
     }
@@ -797,8 +883,14 @@ PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     if(desiredType == -1) {
         PyErr_SetString(PyExc_RuntimeError, "You must provide a valid set of entries. These can be comprised of any of the following: \n"
 "1. A list of each of chromosomes, start positions, end positions and values.\n"
-"2. A list of each of chromosomes, start positions and values. Also, a span must be specified.\n"
+"2. A list of each of start positions and values. Also, a chromosome and span must be specified.\n"
 "3. A list values, in which case a single chromosome, start position, span and step must be specified.\n");
+        return NULL;
+    }
+
+    if(validate == Py_True  && !addEntriesInputOK(self, chroms, starts, ends, span, step, desiredType)) {
+        PyErr_SetString(PyExc_RuntimeError, "The entries you tried to add are out of order, precede already added entries, or otherwise use illegal values.\n"
+" Please correct this and try again.\n");
         return NULL;
     }
 
