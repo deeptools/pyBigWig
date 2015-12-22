@@ -937,6 +937,8 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
     PyObject *res;
     errno = 0; //just in case
 
+    if(Py_AtExit(bwCleanup)) return NULL;
+
     if(PyType_Ready(&bigWigFile) < 0) return NULL;
     if(bwInit(128000)) return NULL;
     res = PyModule_Create(&pyBigWigmodule);
@@ -951,6 +953,7 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
 //Python2 initialization
 PyMODINIT_FUNC initpyBigWig(void) {
     errno=0; //Sometimes libpython2.7.so is missing some links...
+    if(Py_AtExit(bwCleanup)) return NULL;
     if(PyType_Ready(&bigWigFile) < 0) return;
     if(bwInit(128000)) return; //This is temporary
     Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");

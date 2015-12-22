@@ -114,4 +114,4 @@ pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). Y
 # To do
 
  - [ ] Add writer example to this file.
- - [ ] The global curl cleanup stuff isn't being done at all currently.
+ - [X] The global curl cleanup stuff isn't being done at all currently.
