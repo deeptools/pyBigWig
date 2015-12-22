@@ -31,8 +31,8 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
 
 error:
     if(bw) bwClose(bw);
-    Py_INCREF(Py_None);
-    return Py_None;
+    PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening!");
+    return NULL;
 }
 
 static void pyBwDealloc(pyBigWigFile_t *self) {
@@ -83,8 +83,8 @@ static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
 error :
     Py_XDECREF(val);
     Py_XDECREF(ret);
-    Py_INCREF(Py_None);
-    return Py_None;
+    PyErr_SetString(PyExc_RuntimeError, "Received an error while getting the bigWig header!");
+    return NULL;
 }
 
 //Accessor for the chroms, args is optional
@@ -116,8 +116,8 @@ static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
 error :
     Py_XDECREF(val);
     Py_XDECREF(ret);
-    Py_INCREF(Py_None);
-    return Py_None;
+    PyErr_SetString(PyExc_RuntimeError, "Received an error while adding an item to the output dictionary!");
+    return NULL;
 }
 
 enum bwStatsType char2enum(char *s) {
@@ -144,8 +144,8 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksi", kwd_list, &chrom, &startl, &endl, &type, &nBins)) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome!");
+        return NULL;
     }
 
     //Check inputs, reset to defaults if nothing was input
@@ -154,8 +154,8 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     tid = bwGetTid(bw, chrom);
     if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
     if(tid == -1 || startl > end || endl > end) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
     }
     start = (uint32_t) startl;
     end = (uint32_t) endl;
@@ -165,15 +165,15 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     }
 
     if(char2enum(type) == doesNotExist) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "Invalid type!");
+        return NULL;
     }
 
     //Get the actual statistics
     val = bwStats(bw, chrom, start, end, nBins, char2enum(type));
     if(!val) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "An error was encountered while fetching statistics.");
+        return NULL;
     }
 
     ret = PyList_New(nBins);
@@ -196,15 +196,15 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     bwOverlappingIntervals_t *o;
 
     if(!PyArg_ParseTuple(args, "skk", &chrom, &startl, &endl)) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
+        return NULL;
     }
 
     tid = bwGetTid(bw, chrom);
     if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
     if(tid == -1 || startl > end || endl > end) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
     }
     start = (uint32_t) startl;
     end = (uint32_t) endl;
@@ -215,8 +215,8 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 
     o = bwGetValues(self->bw, chrom, start, end, 1);
     if(!o) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "An error occurred while fetching values!");
+        return NULL;
     }
 
     ret = PyList_New(end-start);
@@ -237,16 +237,16 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     PyObject *ret;
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &startl, &endl)) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome.\n");
+        return NULL;
     }
 
     //Sanity check
     tid = bwGetTid(bw, chrom);
     if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
     if(tid == -1 || startl > end || endl > end) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
     }
     start = (uint32_t) startl;
     end = (uint32_t) endl;
@@ -257,7 +257,11 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 
     //Get the intervals
     intervals = bwGetOverlappingIntervals(bw, chrom, start, end);
-    if(!intervals || !intervals->l) {
+    if(!intervals) {
+        PyErr_SetString(PyExc_RuntimeError, "An error occurred while fetching the overlapping intervals!");
+        return NULL;
+    }
+    if(!intervals->l) {
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -267,8 +271,8 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
         if(PyTuple_SetItem(ret, i, Py_BuildValue("(iif)", intervals->start[i], intervals->end[i], intervals->value[i]))) {
             Py_DECREF(ret);
             bwDestroyOverlappingIntervals(intervals);
-            Py_INCREF(Py_None);
-            return Py_None;
+            PyErr_SetString(PyExc_RuntimeError, "An error occurred while constructing the output tuple!");
+            return NULL;
         }
     }
 
