@@ -71,7 +71,6 @@ static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
     if(PyDict_SetItemString(ret, "sumSquared", val) == -1) goto error;
     Py_DECREF(val);
 
-    Py_INCREF(ret);
     return ret;
 
 error :
@@ -104,7 +103,6 @@ static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
         }
     }
 
-    Py_INCREF(ret);
     return ret;
 
 error :
@@ -174,7 +172,6 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     for(i=0; i<nBins; i++) PyList_SetItem(ret, i, (isnan(val[i]))?Py_None:PyFloat_FromDouble(val[i]));
     free(val);
 
-    Py_INCREF(ret);
     return ret;
 }
 
@@ -217,7 +214,6 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     for(i=0; i<o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
     bwDestroyOverlappingIntervals(o);
 
-    Py_INCREF(ret);
     return ret;
 }
 
@@ -267,7 +263,6 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     }
 
     bwDestroyOverlappingIntervals(intervals);
-    Py_INCREF(ret);
     return ret;
 }
 
@@ -277,6 +272,7 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
     errno = 0; //just in case
 
     if(PyType_Ready(&bigWigFile) < 0) return NULL;
+    if(Py_AtExit(bwCleanup)) return NULL;
     if(bwInit(128000)) return NULL;
     res = PyModule_Create(&pyBigWigmodule);
     if(!res) return NULL;
@@ -290,6 +286,7 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
 //Python2 initialization
 PyMODINIT_FUNC initpyBigWig(void) {
     errno=0; //Sometimes libpython2.7.so is missing some links...
+    if(Py_AtExit(bwCleanup)) return NULL;
     if(PyType_Ready(&bigWigFile) < 0) return;
     if(bwInit(128000)) return; //This is temporary
     Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");

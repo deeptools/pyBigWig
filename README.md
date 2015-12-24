@@ -109,6 +109,5 @@ Wiggle and BigWig files use 0-based half-open coordinates, which are also used b
 
 # To do
 
- - [ ] Use numpy arrays instead of lists? This requires having numpy installed, which seems rather over the top but Fidel might want this for deeptools.
  - [ ] Writer functions? It's unclear how much these would even be used.
- - [ ] The global curl cleanup stuff isn't being done at all currently.
+ - [X] The global curl cleanup stuff isn't being done at all currently.
