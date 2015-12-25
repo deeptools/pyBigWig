@@ -9,13 +9,16 @@ srcs = [x for x in
     glob.glob("libBigWig/*.c")]
 srcs.append("pyBigWig.c")
 
+libs=["m", "z", "curl"]
 if sysconfig.get_config_vars('BLDLIBRARY') is not None:
     #Note the "-l" prefix!
-    libpython = sysconfig.get_config_vars('BLDLIBRARY')[2:]
+    for e in sysconfig.get_config_vars('BLDLIBRARY')[0].split():
+        if e[0:2] == "-l":
+            libs.append(e[2:])
 elif(sys.version_info[0] >= 3 and sys.version_info[1] >= 3) :
-    libpython = "python%i.%im" % (sys.version_info[0], sys.version_info[1])
+    libs.append("python%i.%im" % (sys.version_info[0], sys.version_info[1]))
 else :
-    libpython = "python%i.%i" % (sys.version_info[0], sys.version_info[1])
+    libs.append("python%i.%i" % (sys.version_info[0], sys.version_info[1]))
 
 #LIBRARY_PATH is often not set in Galaxy, though curl-config is in the PATH
 additional_libs = [sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LIBPL")]
@@ -26,10 +29,9 @@ for v in foo:
         additional_libs.append(v[2:])
 
 #Galaxy will often link against the wrong libpython!!!!
-
 module1 = Extension('pyBigWig',
                     sources = srcs,
-                    libraries = ["m", "z", "curl", libpython],
+                    libraries = libs,
                     library_dirs = additional_libs, 
                     include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")])
 
