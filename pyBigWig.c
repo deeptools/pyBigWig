@@ -35,10 +35,14 @@ error:
     return NULL;
 }
 
+static void pyBwDealloc(pyBigWigFile_t *self) {
+    if(self->bw) bwClose(self->bw);
+    PyObject_DEL(self);
+}
+
 static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
     bwClose(self->bw);
     self->bw = NULL;
-    PyObject_DEL(self);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -942,7 +946,7 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
 //Python2 initialization
 PyMODINIT_FUNC initpyBigWig(void) {
     errno=0; //Sometimes libpython2.7.so is missing some links...
-    if(Py_AtExit(bwCleanup)) return NULL;
+    if(Py_AtExit(bwCleanup)) return;
     if(PyType_Ready(&bigWigFile) < 0) return;
     if(bwInit(128000)) return; //This is temporary
     Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
