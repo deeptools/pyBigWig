@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from setuptools import setup, Extension, find_packages
-import sysconfig
+from distutils import sysconfig
 import subprocess
 import glob
 import sys
