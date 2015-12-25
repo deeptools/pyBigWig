@@ -35,14 +35,10 @@ error:
     return NULL;
 }
 
-static void pyBwDealloc(pyBigWigFile_t *self) {
-    if(self->bw) bwClose(self->bw);
-    PyObject_DEL(self);
-}
-
 static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
     bwClose(self->bw);
     self->bw = NULL;
+    PyObject_DEL(self);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -63,8 +59,6 @@ static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
     if(PyDict_SetItemString(ret, "nBasesCovered", val) == -1) goto error;
     Py_DECREF(val);
     val = PyLong_FromDouble(bw->hdr->minVal);
-    Py_DECREF(val);
-    val = PyLong_FromDouble(bw->hdr->minVal);
     if(PyDict_SetItemString(ret, "minVal", val) == -1) goto error;
     Py_DECREF(val);
     val = PyLong_FromDouble(bw->hdr->maxVal);
@@ -77,7 +71,6 @@ static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
     if(PyDict_SetItemString(ret, "sumSquared", val) == -1) goto error;
     Py_DECREF(val);
 
-    Py_INCREF(ret);
     return ret;
 
 error :
@@ -110,7 +103,6 @@ static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
         }
     }
 
-    Py_INCREF(ret);
     return ret;
 
 error :
@@ -180,7 +172,6 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     for(i=0; i<nBins; i++) PyList_SetItem(ret, i, (isnan(val[i]))?Py_None:PyFloat_FromDouble(val[i]));
     free(val);
 
-    Py_INCREF(ret);
     return ret;
 }
 
@@ -223,7 +214,6 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     for(i=0; i<o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
     bwDestroyOverlappingIntervals(o);
 
-    Py_INCREF(ret);
     return ret;
 }
 
@@ -277,7 +267,6 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     }
 
     bwDestroyOverlappingIntervals(intervals);
-    Py_INCREF(ret);
     return ret;
 }
 
