@@ -21,7 +21,11 @@ This will work if your working directory is the pyBigWig source code directory.
 
     >>> bw = pyBigWig.open("test/test.bw")
 
-Note that if the file doesn't exist you'll see an error message and `None` will be returned.
+Note that if the file doesn't exist you'll see an error message and `None` will be returned. Be default, all files are opened for reading and not writing. You can alter this by passing a mode containing `w`:
+
+    >>> bw = pyBigWig.open("test/output.bw", "w")
+
+Note that a file opened for writing can't be queried for its intervals or statistics, it can *only* be written to. If you open a file for writing then you will next need to add a header (see the section on this below).
 
 ## Access the list of chromosomes and their lengths
 
@@ -99,9 +103,67 @@ If the start and end position are omitted then all intervals on the chromosome s
     >>> bw.intervals("1")
     ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896), (100, 150, 1.399999976158142), (150, 151, 1.5))
 
+## Add a header to a bigWig file
+
+If you've opened a file for writing then you'll need to give it a header before you can add any entries. The header contains all of the chromosomes, **in order**, and their sizes. If your chromosome has two chromosomes, chr1 and chr2, of lengths 1 and 1.5 million bases, then the following would add an appropriate header:
+
+    >>> bw.addHeader([("chr1", 1000000), ("chr2", 1500000)])
+
+bigWig headers are case-sensitive, so `chr1` and `Chr1` are different. Likewise, `1` and `chr1` are not the same, so you can't mix Ensembl and UCSC chromosome names. After adding a header, you can then add entries.
+
+By default, up to 10 "zoom levels" are constructed for bigWig files. You can change this default number with the `maxZooms` optional argument. A common use of this is to create a bigWig file that simply holds intervals and no zoom levels:
+
+    >>> bw.addHeader([("chr1", 1000000), ("chr2", 1500000)], maxZooms=0)
+
+## Adding entries to a bigWig file
+
+Assuming you've opened a file for writing and added a header, you can then add entries. Note that the entries **must** be added in order, as bigWig files always contain ordered intervals. There are three formats that bigWig files can use internally to store entries. The most commonly observed format is identical to a [bedGraph](https://genome.ucsc.edu/goldenpath/help/bedgraph.html) file:
+
+    chr1	0	100	0.0
+    chr1	100	120	1.0
+    chr1	125	126	200.0
+
+These entries would be added as follows:
+
+    >>> bw.addEntries(["chr1", "chr1", "chr1"], [0, 100, 125], ends=[5, 120, 126], values=[0.0, 1.0, 200.0])
+
+Each entry occupies 12 bytes before compression.
+
+The second format uses a fixed span, but a variable step size between entries. These can be represented in a [wiggle](http://genome.ucsc.edu/goldenpath/help/wiggle.html) file as:
+
+    variableStep chrom=chr1 span=20
+    500	-2.0
+    600	150.0
+    635	25.0
+
+The above entries describe (1-based) positions 501-520, 601-620 and 636-655. These would be added as follows:
+
+    >>> bw.addEntries("chr1", [500, 600, 635], values=[-2.0, 150.0, 25.0], span=20)
+
+Each entry of this type occupies 8 bytes before compression.
+
+The final format uses a fixed step and span for each entry, corresponding to the fixedStep [wiggle format](http://genome.ucsc.edu/goldenpath/help/wiggle.html):
+
+    fixedStep chrom=chr1 step=30 span=20
+    -5.0
+    -20.0
+    25.0
+
+The above entries describe (1-based) bases 901-920, 931-950 and 961-980 and would be added as follows:
+
+    >>> bw.addEntries("chr1", 900, values=[-5.0, -20.0, 25.0], span=20, step=30)
+
+Each entry of this type occupies 4 bytes.
+
+Note that pyBigWig will try to prevent you from adding entries in an incorrect order. This, however, requires additional over-head. Should that not be acceptable, you can simply specify `validate=False` when adding entries:
+
+    >>> bw.addEntries(["chr1", "chr1", "chr1"], [100, 0, 125], ends=[120, 5, 126], values=[0.0, 1.0, 200.0], validate=False)
+
+You're obviously then responsible for ensuring that you **do not** add entries out of order. The resulting files would otherwise largley not be usable.
+
 ## Close a bigWig file
 
-A file can be closed with a simple `bw.close()`, as is commonly done with other file types.
+A file can be closed with a simple `bw.close()`, as is commonly done with other file types. For files opened for writing, closing a file writes any buffered entries to disk, constructs and writes the file index, and constructs zoom levels. Consequently, this can take a bit of time.
 
 # A note on coordinates
 
@@ -110,8 +172,3 @@ Wiggle and BigWig files use 0-based half-open coordinates, which are also used b
 # Galaxy
 
 pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). You can find it in the toolshed as `package_python_2_7_pybigwig_0_1_9`. The [IUC](https://wiki.galaxyproject.org/IUC) is currently hosting the XML definition of this on [github](https://github.com/galaxyproject/tools-iuc/tree/master/packages/package_python_2_7_10_pybigwig_0_1_9).
-
-# To do
-
- - [ ] Add writer example to this file.
- - [X] The global curl cleanup stuff isn't being done at all currently.

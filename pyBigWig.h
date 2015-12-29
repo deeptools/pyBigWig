@@ -29,6 +29,12 @@ static PyMethodDef bwMethods[] = {
 "Open a bigWig file. For remote files, give a URL starting with HTTP,\n\
 FTP, or HTTPS.\n\
 \n\
+Optional arguments:\n\
+    mode: An optional mode. The default is 'r', which opens a file for reading.\n\
+          If you specify a mode containing 'w' then you'll instead open a file\n\
+          for writing. Note that you then need to add an appropriate header\n\
+          before use.\n\
+\n\
 Returns:\n\
    A bigWigFile object on success, otherwise None.\n\
 \n\
