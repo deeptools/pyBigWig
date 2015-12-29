@@ -1,9 +1,11 @@
 [![PyPI version](https://badge.fury.io/py/pyBigWig.svg)](https://badge.fury.io/py/pyBigWig) [![Travis-CI status](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=WriterIntegration)](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master)
 
+# pyBigWig
+A python extension, written in C, for quick access to and creation of bigWig files. This extension uses [libBigWig](https://github.com/dpryan79/libBigWig) for local and remote file access.
+
 Table of Contents
 =================
 
-  * [pyBigWig](#pybigwig)
   * [Installation](#installation)
   * [Usage](#usage)
     * [Load the extension](#load-the-extension)
@@ -18,9 +20,6 @@ Table of Contents
     * [Close a bigWig file](#close-a-bigwig-file)
   * [A note on coordinates](#a-note-on-coordinates)
   * [Galaxy](#galaxy)
-
-# pyBigWig
-A python extension written in C for quick access to bigWig files. This extension uses [libBigWig](https://github.com/dpryan79/libBigWig) for local and remote file access.
 
 # Installation
 You can install this extension directly from github with:
