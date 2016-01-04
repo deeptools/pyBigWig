@@ -1,4 +1,4 @@
-[![PyPI version](https://badge.fury.io/py/pyBigWig.svg)](https://badge.fury.io/py/pyBigWig) [![Travis-CI status](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master)](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master) [![bioconda-badge](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat-square)](http://bioconda.github.io)
+[![PyPI version](https://badge.fury.io/py/pyBigWig.svg)](https://badge.fury.io/py/pyBigWig) [![Travis-CI status](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master)](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master) [![bioconda-badge](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg)](http://bioconda.github.io)
 
 
 # pyBigWig
