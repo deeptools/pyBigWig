@@ -14,15 +14,12 @@ if(sys.version_info[0] >= 3 and sys.version_info[1] >= 3) :
 else :
     libpython = "python%i.%i" % (sys.version_info[0], sys.version_info[1])
 
-#LIBRARY_PATH is often not set in Galaxy, though curl-config is in the PATH
 additional_libs = [sysconfig.get_config_var("LIBDIR")]
 foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
 foo = foo.strip().split()
 for v in foo:
     if(v[0:2] == "-L") :
         additional_libs.append(v[2:])
-
-#Galaxy will often link against the wrong libpython!!!!
 
 module1 = Extension('pyBigWig',
                     sources = srcs,
