@@ -1191,7 +1191,7 @@ int bwFinalize(bigWigFile_t *fp) {
     if(fp->hdr) {
         if(writeAtPos(&(fp->writeBuffer->nBlocks), sizeof(uint64_t), 1, fp->hdr->dataOffset, fp->URL->x.fp)) return 2;
     } else {
-        //The header was never written!
+        //The header wasn't written!
         return 1;
     }
 

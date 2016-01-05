@@ -18,14 +18,23 @@ uint64_t getContentLength(URL_t *URL) {
 }
 
 //Fill the buffer, note that URL may be left in an unusable state on error!
-CURLcode urlFetchData(URL_t *URL) {
+CURLcode urlFetchData(URL_t *URL, unsigned long bufSize) {
     CURLcode rv;
+    char range[1024];
     size_t len;
 
     if(URL->filePos != -1) URL->filePos += URL->bufLen;
     else URL->filePos = 0;
 
-    rv = curl_easy_recv(URL->x.curl, URL->memBuf+URL->bufLen, URL->bufSize, &len);
+    URL->bufPos = URL->bufLen = 0; //Otherwise, we can't copy anything into the buffer!
+    sprintf(range,"%lu-%lu", URL->filePos, URL->filePos+bufSize-1);
+    rv = curl_easy_setopt(URL->x.curl, CURLOPT_RANGE, range);
+    if(rv != CURLE_OK) {
+        fprintf(stderr, "[urlFetchData] Couldn't set the range (%s)\n", range);
+        return rv;
+    }
+
+    rv = curl_easy_perform(URL->x.curl);
     return rv;
 }
 
@@ -37,7 +46,7 @@ size_t url_fread(void *obuf, size_t obufSize, URL_t *URL) {
     CURLcode rv;
     while(remaining) {
         if(!URL->bufLen) {
-            rv = urlFetchData(URL);
+            rv = urlFetchData(URL, URL->bufSize);
             if(rv != CURLE_OK) {
                 fprintf(stderr, "[url_fread] urlFetchData (A) returned %s\n", curl_easy_strerror(rv));
                 return 0;
@@ -47,10 +56,12 @@ size_t url_fread(void *obuf, size_t obufSize, URL_t *URL) {
             if(!p) return 0;
             p += URL->bufLen - URL->bufPos;
             remaining -= URL->bufLen - URL->bufPos;
-            rv = urlFetchData(URL);
-            if(rv != CURLE_OK) {
-                fprintf(stderr, "[url_fread] urlFetchData (B) returned %s\n", curl_easy_strerror(rv));
-                return 0;
+            if(remaining) {
+                rv = urlFetchData(URL, (remaining<URL->bufSize)?remaining:URL->bufSize);
+                if(rv != CURLE_OK) {
+                    fprintf(stderr, "[url_fread] urlFetchData (B) returned %s\n", curl_easy_strerror(rv));
+                    return 0;
+                }
             }
         } else {
             p = memcpy(p, URL->memBuf+URL->bufPos, remaining);
