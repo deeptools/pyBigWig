@@ -43,7 +43,7 @@ class TestRemote():
         #Since this is an unordered dict(), iterating over the items can swap the order!
         chroms = [("1", bw.chroms("1")), ("10", bw.chroms("10"))]
         assert(len(bw.chroms()) == 2)
-        bw2.addHeader(chroms)
+        bw2.addHeader(chroms, maxZooms=0)
         #Copy the input file
         for c in chroms:
             ints = bw.intervals(c[0])

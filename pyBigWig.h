@@ -19,7 +19,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kw
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
-static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBwAddEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static void pyBwDealloc(pyBigWigFile_t *pybw);
 
@@ -172,7 +172,7 @@ end of 10 specifies the first 10 positions).\n\
 ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224),\n\
  (2, 3, 0.30000001192092896))\n\
 >>> bw.close()"},
-    {"addHeader", (PyCFunction)pyBwAddHeader, METH_VARARGS,
+    {"addHeader", (PyCFunction)pyBwAddHeader, METH_VARARGS|METH_KEYWORDS,
 "Adds a header to a file opened for writing. This MUST be called before adding\n\
 any entries. On error, a runtime exception is thrown.\n\
 \n\
@@ -192,7 +192,7 @@ Keyword arguments:\n\
 >>> oname = ofile.name\n\
 >>> ofile.close()\n\
 >>> bw = pyBigWig.open(oname, 'w')\n\
->>> bw.addHeader([(\"1\", 1000000), (\"2\", 1500000)])\n\
+>>> bw.addHeader([(\"1\", 1000000), (\"2\", 1500000)], maxZooms=0)\n\
 >>> bw.close()\n\
 >>> os.remove(oname)"},
     {"addEntries", (PyCFunction)pyBwAddEntries, METH_VARARGS|METH_KEYWORDS,

@@ -315,17 +315,18 @@ uint32_t Numeric2Uint(PyObject *obj) {
 }
 
 //This runs bwCreateHdr, bwCreateChromList, and bwWriteHdr
-PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args) {
+PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
     char **chroms = NULL;
     int64_t n;
     uint32_t *lengths = NULL, len;
     int32_t maxZooms = 10;
     long zoomTmp = 10;
+    static char *kwd_list[] = {"cl", "maxZooms", NULL};
     PyObject *InputTuple = NULL, *tmpObject, *tmpObject2;
     Py_ssize_t i, pyLen;
 
-    if(!PyArg_ParseTuple(args, "O|k", &InputTuple, &zoomTmp)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|k", kwd_list, &InputTuple, &zoomTmp)) {
         PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
         return NULL;
     }
