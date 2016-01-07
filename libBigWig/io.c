@@ -21,7 +21,6 @@ uint64_t getContentLength(URL_t *URL) {
 CURLcode urlFetchData(URL_t *URL, unsigned long bufSize) {
     CURLcode rv;
     char range[1024];
-    size_t len;
 
     if(URL->filePos != -1) URL->filePos += URL->bufLen;
     else URL->filePos = 0;
