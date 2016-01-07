@@ -32,17 +32,18 @@ typedef struct bwRTreeNode_t {
 /*!
  * A header and index that points to an R-tree that in turn points to data blocks.
  */
+//TODO rootOffset is pointless, it's 48bytes after the indexOffset
 typedef struct {
-    uint32_t blockSize; /**<The size of each node on disk*/
-    uint64_t nItems; /**<The number of children that nodes can have*/
+    uint32_t blockSize; /**<The maximum number of children a node can have*/
+    uint64_t nItems; /**<The total number of data blocks pointed to by the tree. This is completely redundant.*/
     uint32_t chrIdxStart; /**<The index to the first chromosome described.*/
     uint32_t baseStart; /**<The first position on chrIdxStart with a value.*/
     uint32_t chrIdxEnd; /**<The index of the last chromosome with an entry.*/
     uint32_t baseEnd; /**<The last position on chrIdxEnd with an entry.*/
-    uint64_t idxSize; /**<The size of the block of the file occupied by the index. This value isn't currently used.*/
-    uint32_t nItemsPerSlot; /**<The expected number of items per node.*/
+    uint64_t idxSize; /**<This is actually the offset of the index rather than the size?!? Yes, it's completely redundant.*/
+    uint32_t nItemsPerSlot; /**<This is always 1!*/
     //There's 4 bytes of padding in the file here
-    uint64_t rootOffset; /**<The offset to the root node of the R-Tree (on disk).*/
+    uint64_t rootOffset; /**<The offset to the root node of the R-Tree (on disk). Yes, this is redundant.*/
     bwRTreeNode_t *root; /**<A pointer to the root node.*/
 } bwRTree_t;
 

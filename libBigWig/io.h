@@ -15,7 +15,7 @@ enum bigWigFile_type_enum {
     BWG_FILE = 0,
     BWG_HTTP = 1,
     BWG_HTTPS = 2,
-    BWG_FTP = 3,
+    BWG_FTP = 3
 };
 
 /*!
@@ -73,10 +73,11 @@ CURLcode urlSeek(URL_t *URL, size_t pos);
  *
  * @param fname The file name or URL to open.
  * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information.
+ * @param mode "r", "w" or NULL. If and only if the mode contains the character "w" will the file be opened for writing.
  *
  *  @return A URL_t * or NULL on error.
  */
-URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*));
+URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*), const char* mode);
 
 /*!
  *  @brief Close a local/remote file

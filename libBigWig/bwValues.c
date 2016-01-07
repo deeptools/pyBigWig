@@ -1,4 +1,5 @@
 #include "bigWig.h"
+#include "bwCommon.h"
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
@@ -25,7 +26,7 @@ static bwRTree_t *readRTreeIdx(bigWigFile_t *fp, uint64_t offset) {
         if(bwSetPos(fp, offset)) return NULL;
     }
 
-    if(bwRead(&magic, sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) return NULL;
+    if(bwRead(&magic, sizeof(uint32_t), 1, fp) != 1) return NULL;
     if(magic != IDX_MAGIC) {
         fprintf(stderr, "[readRTreeIdx] Mismatch in the magic number!\n");
         return NULL;
@@ -34,16 +35,16 @@ static bwRTree_t *readRTreeIdx(bigWigFile_t *fp, uint64_t offset) {
     node = malloc(sizeof(bwRTree_t));
     if(!node) return NULL;
 
-    if(bwRead(&(node->blockSize), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-    if(bwRead(&(node->nItems), sizeof(uint64_t), 1, fp) != sizeof(uint64_t)) goto error;
-    if(bwRead(&(node->chrIdxStart), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-    if(bwRead(&(node->baseStart), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-    if(bwRead(&(node->chrIdxEnd), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-    if(bwRead(&(node->baseEnd), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-    if(bwRead(&(node->idxSize), sizeof(uint64_t), 1, fp) != sizeof(uint64_t)) goto error;
-    if(bwRead(&(node->nItemsPerSlot), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
+    if(bwRead(&(node->blockSize), sizeof(uint32_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->nItems), sizeof(uint64_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->chrIdxStart), sizeof(uint32_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->baseStart), sizeof(uint32_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->chrIdxEnd), sizeof(uint32_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->baseEnd), sizeof(uint32_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->idxSize), sizeof(uint64_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->nItemsPerSlot), sizeof(uint32_t), 1, fp) != 1) goto error;
     //Padding
-    if(bwRead(&(node->blockSize), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
+    if(bwRead(&(node->blockSize), sizeof(uint32_t), 1, fp) != 1) goto error;
     node->rootOffset = bwTell(fp);
 
     return node;
@@ -69,9 +70,9 @@ static bwRTreeNode_t *bwGetRTreeNode(bigWigFile_t *fp, uint64_t offset) {
     node = calloc(1, sizeof(bwRTreeNode_t));
     if(!node) return NULL;
 
-    if(bwRead(&(node->isLeaf), sizeof(uint8_t), 1, fp) != sizeof(uint8_t)) goto error;
-    if(bwRead(&padding, sizeof(uint8_t), 1, fp) != sizeof(uint8_t)) goto error;
-    if(bwRead(&(node->nChildren), sizeof(uint16_t), 1, fp) != sizeof(uint16_t)) goto error;
+    if(bwRead(&(node->isLeaf), sizeof(uint8_t), 1, fp) != 1) goto error;
+    if(bwRead(&padding, sizeof(uint8_t), 1, fp) != 1) goto error;
+    if(bwRead(&(node->nChildren), sizeof(uint16_t), 1, fp) != 1) goto error;
 
     node->chrIdxStart = malloc(sizeof(uint32_t)*(node->nChildren));
     if(!node->chrIdxStart) goto error;
@@ -91,13 +92,13 @@ static bwRTreeNode_t *bwGetRTreeNode(bigWigFile_t *fp, uint64_t offset) {
         if(!node->x.child) goto error;
     }
     for(i=0; i<node->nChildren; i++) {
-        if(bwRead(&(node->chrIdxStart[i]), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-        if(bwRead(&(node->baseStart[i]), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-        if(bwRead(&(node->chrIdxEnd[i]), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-        if(bwRead(&(node->baseEnd[i]), sizeof(uint32_t), 1, fp) != sizeof(uint32_t)) goto error;
-        if(bwRead(&(node->dataOffset[i]), sizeof(uint64_t), 1, fp) != sizeof(uint64_t)) goto error;
+        if(bwRead(&(node->chrIdxStart[i]), sizeof(uint32_t), 1, fp) != 1) goto error;
+        if(bwRead(&(node->baseStart[i]), sizeof(uint32_t), 1, fp) != 1) goto error;
+        if(bwRead(&(node->chrIdxEnd[i]), sizeof(uint32_t), 1, fp) != 1) goto error;
+        if(bwRead(&(node->baseEnd[i]), sizeof(uint32_t), 1, fp) != 1) goto error;
+        if(bwRead(&(node->dataOffset[i]), sizeof(uint64_t), 1, fp) != 1) goto error;
         if(node->isLeaf) {
-            if(bwRead(&(node->x.size[i]), sizeof(uint64_t), 1, fp) != sizeof(uint64_t)) goto error;
+            if(bwRead(&(node->x.size[i]), sizeof(uint64_t), 1, fp) != 1) goto error;
         }
     }
 
@@ -129,7 +130,8 @@ static bwOverlapBlock_t *overlapsLeaf(bwRTreeNode_t *node, uint32_t tid, uint32_
     if(!o) return NULL;
 
     for(i=0; i<node->nChildren; i++) {
-        if(tid < node->chrIdxStart[i] || tid > node->chrIdxEnd[i]) continue;
+        if(tid < node->chrIdxStart[i]) break;
+        if(tid > node->chrIdxEnd[i]) continue;
 
         /*
           The individual blocks can theoretically span multiple contigs.
@@ -138,7 +140,7 @@ static bwOverlapBlock_t *overlapsLeaf(bwRTreeNode_t *node, uint32_t tid, uint32_
         */
         if(node->chrIdxStart[i] != node->chrIdxEnd[i]) {
             if(tid == node->chrIdxStart[i]) {
-                if(node->baseStart[i] >= end) continue;
+                if(node->baseStart[i] >= end) break;
             } else if(tid == node->chrIdxEnd[i]) {
                 if(node->baseEnd[i] <= start) continue;
             }
@@ -155,6 +157,7 @@ static bwOverlapBlock_t *overlapsLeaf(bwRTreeNode_t *node, uint32_t tid, uint32_
         if(!o->size) goto error;
 
         for(i=0; i<node->nChildren; i++) {
+            if(tid < node->chrIdxStart[i]) break;
             if(tid < node->chrIdxStart[i] || tid > node->chrIdxEnd[i]) continue;
             if(node->chrIdxStart[i] != node->chrIdxEnd[i]) {
                 if(tid == node->chrIdxStart[i]) {
@@ -223,6 +226,7 @@ static bwOverlapBlock_t *overlapsNonLeaf(bigWigFile_t *fp, bwRTreeNode_t *node, 
     if(!output) return NULL;
 
     for(i=0; i<node->nChildren; i++) {
+        if(tid < node->chrIdxStart[i]) break;
         if(tid < node->chrIdxStart[i] || tid > node->chrIdxEnd[i]) continue;
         if(node->chrIdxStart[i] != node->chrIdxEnd[i]) { //child spans contigs
             if(tid == node->chrIdxStart[i]) {
@@ -368,10 +372,13 @@ bwOverlappingIntervals_t *bwGetOverlappingIntervalsCore(bigWigFile_t *fp, bwOver
     for(i=0; i<o->n; i++) {
         if(bwSetPos(fp, o->offset[i])) goto error;
 
-        if(sz < o->size[i]) compBuf = realloc(compBuf, o->size[i]);
+        if(sz < o->size[i]) {
+            compBuf = realloc(compBuf, o->size[i]);
+            sz = o->size[i];
+        }
         if(!compBuf) goto error;
 
-        if(bwRead(compBuf, o->size[i], 1, fp) != o->size[i]) goto error;
+        if(bwRead(compBuf, o->size[i], 1, fp) != 1) goto error;
         if(compressed) {
             tmp = fp->hdr->bufSize; //This gets over-written by uncompress
             rv = uncompress(buf, (uLongf *) &tmp, compBuf, o->size[i]);
@@ -502,7 +509,7 @@ error:
     return NULL;
 }
 
-static void bwDestroyIndexNode(bwRTreeNode_t *node) {
+void bwDestroyIndexNode(bwRTreeNode_t *node) {
     uint16_t i;
 
     if(!node) return;
