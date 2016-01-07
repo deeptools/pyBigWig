@@ -1,4 +1,4 @@
-[![PyPI version](https://badge.fury.io/py/pyBigWig.svg)](https://badge.fury.io/py/pyBigWig) [![Travis-CI status](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=WriterIntegration)](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master)
+[![PyPI version](https://badge.fury.io/py/pyBigWig.svg)](https://badge.fury.io/py/pyBigWig) [![Travis-CI status](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=WriterIntegration)](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=WriterIntegration) [![bioconda-badge](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg)](http://bioconda.github.io)
 
 # pyBigWig
 A python extension, written in C, for quick access to and creation of bigWig files. This extension uses [libBigWig](https://github.com/dpryan79/libBigWig) for local and remote file access.
@@ -25,6 +25,10 @@ Table of Contents
 You can install this extension directly from github with:
 
     pip install git+git://github.com/dpryan79/pyBigWig.git
+
+or with conda
+
+    conda install pybigwig -c bioconda
 
 # Usage
 Basic usage is as follows:
