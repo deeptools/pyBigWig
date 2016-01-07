@@ -934,6 +934,7 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
     if(Py_AtExit(bwCleanup)) return NULL;
 
     if(PyType_Ready(&bigWigFile) < 0) return NULL;
+    if(Py_AtExit(bwCleanup)) return NULL;
     if(bwInit(128000)) return NULL;
     res = PyModule_Create(&pyBigWigmodule);
     if(!res) return NULL;
