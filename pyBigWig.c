@@ -148,8 +148,8 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     if(!nBins) nBins = 1; //For some reason, not specifying this overrides the default!
     if(!type) type = "mean";
     tid = bwGetTid(bw, chrom);
-    if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
-    if(tid == -1 || startl > end || endl > end) {
+    if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
+    if(tid == (uint32_t) -1 || startl > end || endl > end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
     }
@@ -196,8 +196,8 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     }
 
     tid = bwGetTid(bw, chrom);
-    if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
-    if(tid == -1 || startl > end || endl > end) {
+    if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
+    if(tid == (uint32_t) -1 || startl > end || endl > end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
     }
@@ -215,7 +215,7 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     }
 
     ret = PyList_New(end-start);
-    for(i=0; i<o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
+    for(i=0; i<(int) o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
     bwDestroyOverlappingIntervals(o);
 
     return ret;
@@ -237,8 +237,8 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 
     //Sanity check
     tid = bwGetTid(bw, chrom);
-    if(endl == -1 && tid != -1) endl = bw->cl->len[tid];
-    if(tid == -1 || startl > end || endl > end) {
+    if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
+    if(tid == (uint32_t) -1 || startl > end || endl > end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
     }
@@ -528,7 +528,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(chroms, i);
             tid = bwGetTid(bw, PyString_AsString(tmp));
-            if(tid != self->lastTid) return 0;
+            if(tid != (uint32_t) self->lastTid) return 0;
         }
         ustart = Numeric2Uint(PyList_GetItem(starts, 0));
         if(PyErr_Occurred()) return 0;
@@ -541,7 +541,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         if(uspan != self->lastSpan) return 0;
         if(!PyString_Check(chroms)) return 0;
         tid = bwGetTid(bw, PyString_AsString(chroms));
-        if(tid != self->lastTid) return 0;
+        if(tid != (uint32_t) self->lastTid) return 0;
 
         ustart = Numeric2Uint(PyList_GetItem(starts, 0));
         if(PyErr_Occurred()) return 0;
@@ -550,7 +550,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
     } else if(desiredType == 2) {
         //We need (A) chrom == lastTid, (B) span/step to be equal and (C) compatible starts
         tid = bwGetTid(bw, PyString_AsString(chroms));
-        if(tid != self->lastTid) return 0;
+        if(tid != (uint32_t) self->lastTid) return 0;
         uspan = Numeric2Uint(span);
         if(PyErr_Occurred()) return 0;
         if(uspan != self->lastSpan) return 0;

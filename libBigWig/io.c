@@ -22,7 +22,7 @@ CURLcode urlFetchData(URL_t *URL, unsigned long bufSize) {
     CURLcode rv;
     char range[1024];
 
-    if(URL->filePos != -1) URL->filePos += URL->bufLen;
+    if(URL->filePos != (size_t) -1) URL->filePos += URL->bufLen;
     else URL->filePos = 0;
 
     URL->bufPos = URL->bufLen = 0; //Otherwise, we can't copy anything into the buffer!

@@ -288,7 +288,7 @@ uint32_t bwGetTid(bigWigFile_t *fp, char *chrom) {
 static bwOverlapBlock_t *bwGetOverlappingBlocks(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end) {
     uint32_t tid = bwGetTid(fp, chrom);
 
-    if(tid == -1) {
+    if(tid == (uint32_t) -1) {
         fprintf(stderr, "[bwGetOverlappingBlocks] Non-existent contig: %s\n", chrom);
         return NULL;
     }
@@ -447,7 +447,7 @@ error:
 bwOverlappingIntervals_t *bwGetOverlappingIntervals(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end) {
     bwOverlappingIntervals_t *output;
     uint32_t tid = bwGetTid(fp, chrom);
-    if(tid == -1) return NULL;
+    if(tid == (uint32_t) -1) return NULL;
     bwOverlapBlock_t *blocks = bwGetOverlappingBlocks(fp, chrom, start, end);
     if(!blocks) return NULL;
     output = bwGetOverlappingIntervalsCore(fp, blocks, tid, start, end);

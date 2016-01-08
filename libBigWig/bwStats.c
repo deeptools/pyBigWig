@@ -95,7 +95,7 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
     }
 
     p = buf;
-    while((void*)p-buf < sz) {
+    while(((uLongf) ((void*)p-buf)) < sz) {
         vtid = p[0];
         vstart = p[1];
         vend = p[2];
@@ -476,7 +476,7 @@ double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t 
 double *bwStats(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
     int32_t level = determineZoomLevel(fp, ((double)(end-start))/((int) nBins));
     uint32_t tid = bwGetTid(fp, chrom);
-    if(tid == -1) return NULL;
+    if(tid == (uint32_t) -1) return NULL;
 
     if(level == -1) return bwStatsFromFull(fp, chrom, start, end, nBins, type);
     return bwStatsFromZoom(fp, level, tid, start, end, nBins, type);
