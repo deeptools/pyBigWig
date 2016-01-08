@@ -145,5 +145,5 @@ class TestRemote():
 class TestLocal():
     def testFoo(self):
         blah = TestRemote()
-        blah.fname = "pyBigWigTest/test.bw"
+        blah.fname = os.path.dirname(pyBigWig.__file__) + "/pyBigWigTest/test.bw"
         blah.testAll()
