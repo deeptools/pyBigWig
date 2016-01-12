@@ -562,6 +562,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         ustart = Numeric2Uint(starts);
         if(PyErr_Occurred()) return 0;
         if(ustart != self->lastStart) return 0;
+        return 1;
     }
 
     return 0;

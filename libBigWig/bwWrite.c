@@ -325,7 +325,6 @@ static int flushBuffer(bigWigFile_t *fp) {
     }
 
     //Add an entry into the index
-fprintf(stderr, "[flushBuffer] %"PRIu32":%"PRIu32"-%"PRIu32"\n", wb->tid, wb->start, wb->end);
     if(addIndexEntry(fp, wb->tid, wb->tid, wb->start, wb->end, bwTell(fp)-sz, sz)) return 11;
 
     wb->nBlocks++;
@@ -454,6 +453,7 @@ int bwAddIntervalSpans(bigWigFile_t *fp, char *chrom, uint32_t *start, uint32_t 
         if(wb->l + 8 >= fp->hdr->bufSize) { //8 bytes/entry
             if(i) wb->end = start[i-1]+span;
             flushBuffer(fp);
+            wb->start = start[i];
         }
         if(!memcpy(wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 5;
         if(!memcpy(wb->p+wb->l+4, &(values[i]), sizeof(float))) return 6;
@@ -477,6 +477,7 @@ int bwAppendIntervalSpans(bigWigFile_t *fp, uint32_t *start, float *values, uint
         if(wb->l + 8 >= fp->hdr->bufSize) {
             if(i) wb->end = start[i-1]+wb->span;
             flushBuffer(fp);
+            wb->start = start[i];
         }
         if(!memcpy(wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 4;
         if(!memcpy(wb->p+wb->l+4, &(values[i]), sizeof(float))) return 5;
