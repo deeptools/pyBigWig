@@ -917,6 +917,7 @@ PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
                 break;
         }
     }
+    self->lastType = desiredType;
 
     Py_INCREF(Py_None);
     return Py_None;
