@@ -509,7 +509,7 @@ int bwAddIntervalSpanSteps(bigWigFile_t *fp, char *chrom, uint32_t start, uint32
 
     for(i=0; i<n; i++) {
         if(wb->l + 4 >= fp->hdr->bufSize) {
-            wb->end = wb->start + (wb->l>>2) + step;
+            wb->end = wb->start + ((wb->l-24)>>2) * step;
             flushBuffer(fp);
             wb->start = wb->end;
         }
@@ -532,7 +532,7 @@ int bwAppendIntervalSpanSteps(bigWigFile_t *fp, float *values, uint32_t n) {
 
     for(i=0; i<n; i++) {
         if(wb->l + 4 >= fp->hdr->bufSize) {
-            wb->end = wb->start + (wb->l>>2) + wb->step;
+            wb->end = wb->start + ((wb->l-24)>>2) * wb->step;
             flushBuffer(fp);
             wb->start = wb->end;
         }
