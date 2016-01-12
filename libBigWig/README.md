@@ -142,7 +142,7 @@ The results of `min`, `max`, and `mean` should be the same as those from `BigWig
 
 #Python interface
 
-There are currently two python interfaces that make use of libBigWig: [pyBigWig](https://github.com/dpryan79/pyBigWig) by me and [bw-python](https://github.com/brentp/bw-python) by Brent Pederson. Those interested are encouraged to give both a try!
+There are currently two python interfaces that make use of libBigWig: [pyBigWig](https://github.com/dpryan79/pyBigWig) by me and [bw-python](https://github.com/brentp/bw-python) by Brent Pedersen. Those interested are encouraged to give both a try!
 
 #To do
  - [ ] Profile code, since this is likely slow in places.
