@@ -21,7 +21,12 @@ else :
     libs.append("python%i.%i" % (sys.version_info[0], sys.version_info[1]))
 
 additional_libs = [sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LIBPL")]
-foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
+
+try:
+    foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
+except:
+    sys.exit("Either libcurl isn't installed, it didn't come with curl-config, or curl-config isn't in your $PATH. This must be corrected before installing pyBigWig!\n")
+
 foo = foo.strip().split()
 for v in foo:
     if(v[0:2] == "-L") :

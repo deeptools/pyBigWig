@@ -30,6 +30,8 @@ or with conda
 
     conda install pybigwig -c bioconda
 
+Note that libcurl (and the `curl-config` command) are required for installation. This is typically already installed on many Linux and OSX systems (if you install with conda then this will happen automatically).
+
 # Usage
 Basic usage is as follows:
 
