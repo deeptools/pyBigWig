@@ -86,7 +86,7 @@ error :
 
 //Accessor for the chroms, args is optional
 static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
-    PyObject *ret = Py_None, *val;
+    PyObject *ret = NULL, *val;
     bigWigFile_t *bw = self->bw;
     char *chrom = NULL;
     uint32_t i;
@@ -105,6 +105,11 @@ static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
                 break;
             }
         }
+    }
+
+    if(!ret) {
+        PyINCREF(Py_None);
+        ret = Py_None;
     }
 
     return ret;
@@ -173,7 +178,14 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     }
 
     ret = PyList_New(nBins);
-    for(i=0; i<nBins; i++) PyList_SetItem(ret, i, (isnan(val[i]))?Py_None:PyFloat_FromDouble(val[i]));
+    for(i=0; i<nBins; i++) {
+        if(isnan(val[i])) {
+            PyINCREF(Py_None);
+            PyList_SetItem(ret, i, Py_None);
+        } else {
+            PyList_SetItem(ret, i, PyFloat_FromDouble(val[i]));
+        }
+    }
     free(val);
 
     return ret;
