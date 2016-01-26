@@ -108,7 +108,7 @@ static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
     }
 
     if(!ret) {
-        PyINCREF(Py_None);
+        Py_INCREF(Py_None);
         ret = Py_None;
     }
 
@@ -180,7 +180,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     ret = PyList_New(nBins);
     for(i=0; i<nBins; i++) {
         if(isnan(val[i])) {
-            PyINCREF(Py_None);
+            Py_INCREF(Py_None);
             PyList_SetItem(ret, i, Py_None);
         } else {
             PyList_SetItem(ret, i, PyFloat_FromDouble(val[i]));
