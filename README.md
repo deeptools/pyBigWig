@@ -24,7 +24,7 @@ Table of Contents
 # Installation
 You can install this extension directly from github with:
 
-    pip install git+git://github.com/dpryan79/pyBigWig.git
+    pip install pyBigWig
 
 or with conda
 
