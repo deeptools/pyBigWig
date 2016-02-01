@@ -179,15 +179,15 @@ int bwWriteHdr(bigWigFile_t *bw) {
         }
     }
 
-    //Write the chromosome list as a stupid freaking tree (because let's TREE ALL THE THINGS!!!)
-    bw->hdr->ctOffset = ftell(fp);
-    if(writeChromList(fp, bw->cl)) return 7;
-    if(writeAtPos(&(bw->hdr->ctOffset), sizeof(uint64_t), 1, 0x8, fp)) return 8;
-
     //Update summaryOffset and write an empty summary block
     bw->hdr->summaryOffset = ftell(fp);
     if(fwrite(p, sizeof(uint8_t), 40, fp) != 40) return 10;
     if(writeAtPos(&(bw->hdr->summaryOffset), sizeof(uint64_t), 1, 0x2c, fp)) return 11;
+
+    //Write the chromosome list as a stupid freaking tree (because let's TREE ALL THE THINGS!!!)
+    bw->hdr->ctOffset = ftell(fp);
+    if(writeChromList(fp, bw->cl)) return 7;
+    if(writeAtPos(&(bw->hdr->ctOffset), sizeof(uint64_t), 1, 0x8, fp)) return 8;
 
     //Update the dataOffset
     bw->hdr->dataOffset = ftell(fp);
