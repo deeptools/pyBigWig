@@ -144,7 +144,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     int i, nBins = 1;
     errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksio", kwd_list, &chrom, &startl, &endl, &type, &nBins, &exact)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksiO", kwd_list, &chrom, &startl, &endl, &type, &nBins, &exact)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome!");
         return NULL;
     }
