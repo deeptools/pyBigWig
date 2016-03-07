@@ -138,13 +138,13 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     double *val;
     uint32_t start, end = -1, tid;
     unsigned long startl = 0, endl = -1;
-    static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", NULL};
+    static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", "exact", NULL};
     char *chrom, *type = "mean";
-    PyObject *ret;
+    PyObject *ret, *exact = Py_False;
     int i, nBins = 1;
     errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksi", kwd_list, &chrom, &startl, &endl, &type, &nBins)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksio", kwd_list, &chrom, &startl, &endl, &type, &nBins, &exact)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome!");
         return NULL;
     }
@@ -171,7 +171,12 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     }
 
     //Get the actual statistics
-    val = bwStats(bw, chrom, start, end, nBins, char2enum(type));
+    if(exact == Py_True) {
+        val = bwStatsFromFull(bw, chrom, start, end, nBins, char2enum(type));
+    } else {
+        val = bwStats(bw, chrom, start, end, nBins, char2enum(type));
+    }
+
     if(!val) {
         PyErr_SetString(PyExc_RuntimeError, "An error was encountered while fetching statistics.");
         return NULL;
