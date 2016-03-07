@@ -6,4 +6,4 @@ python:
   - "3.4"
   - "3.5"
 install: pip install .
-script: nosetests
+script: nosetests -sv
