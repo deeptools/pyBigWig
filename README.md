@@ -120,9 +120,7 @@ For the sake of consistency with other tools, pyBigWig adopts this same methodol
     >>> mean(bw.values('chr1', 89294, 91629))
     0.22213841940688142
     >>> bw.stats('chr1', 89294, 91629, exact=True)
-    [0.22213841951192942]
-
-The very small difference between the results from `mean()` and the `exact=True` option is presumably due to differences in how floating point values are being handled internally. bigWig files store values as 32 bit floats. Internally, pyBigWig (as well as Kent's tools) converts these to 64 bit doubles before computing summary statistics, which are then returned as 32 bit floats. Anything not also doing this will suffer slightly more from the typical floating point arithmetic issues.
+    [0.22213841940688142]
 
 ## Retrieve values for individual bases in a range
 

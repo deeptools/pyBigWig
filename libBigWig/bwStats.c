@@ -135,7 +135,6 @@ error:
 }
 
 //On error, errno is set to ENOMEM and NaN is returned (though NaN can be returned normally)
-//Does UCSC compensate for partial block/range overlap?
 static double blockMean(bigWigFile_t *fp, bwOverlapBlock_t *blocks, uint32_t tid, uint32_t start, uint32_t end) {
     uint32_t i, j;
     double output = 0.0, coverage = 0.0;
@@ -177,7 +176,7 @@ static double intMean(bwOverlappingIntervals_t* ints, uint32_t start, uint32_t e
         if(ints->start[i] < start) start_use = start;
         if(ints->end[i] > end) end_use = end;
         nBases += end_use-start_use;
-        sum += (end_use-start_use)*ints->value[i];
+        sum += (end_use-start_use)*((double) ints->value[i]);
     }
 
     return sum/nBases;
