@@ -288,6 +288,20 @@ bwOverlappingIntervals_t *bwGetValues(bigWigFile_t *fp, char *chrom, uint32_t st
  */
 double *bwStats(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type);
 
+/*!
+ * @brief Determines per-interval statistics
+ * Can determine mean/min/max/coverage/standard deviation of values in one or more intervals. You can optionally give it an interval and ask for values from X number of sub-intervals. The difference with bwStats is that zoom levels are never used.
+ * @param fp The file from which to extract statistics.
+ * @param chrom A valid chromosome name.
+ * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
+ * @param end The end position of the interval. Again, this is 0-based half open, so 100 will include the 100th base...which is at position 99.
+ * @param nBins The number of bins within the interval to calculate statistics for.
+ * @param type The type of statistic.
+ * @see bwStatsType
+ * @return A pointer to an array of double precission floating point values. Note that bigWig files only hold 32-bit values, so this is done to help prevent overflows.
+*/
+double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type);
+
 //Writer functions
 
 /*!
