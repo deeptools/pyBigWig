@@ -104,6 +104,12 @@ Keyword arguments:\n\
     type:  Summary type (mean, min, max, coverage, std), default 'mean'.\n\
     nBins: Number of bins into which the range should be divided before\n\
            computing summary statistics. The default is 1.\n\
+    exact: By default, pyBigWig uses the same method as Kent's tools from UCSC\n\
+           for computing statistics. This means that 'zoom levels' may be\n\
+           used, rather than actual values (please see the pyBigWig repository\n\
+           on github for further information on this). To avoid this behaviour,\n\
+           simply specify 'exact=True'. Note that values returned will then\n\
+           differ from what UCSC, IGV, and similar other tools will report.\n\
 \n\
 >>> import pyBigWig\n\
 >>> bw = pyBigWig.open(\"test/test.bw\")\n\

@@ -13,6 +13,7 @@ Table of Contents
     * [Access the list of chromosomes and their lengths](#access-the-list-of-chromosomes-and-their-lengths)
     * [Print the header](#print-the-header)
     * [Compute summary information on a range](#compute-summary-information-on-a-range)
+      * [A note on statistics and zoom levels](#a-note-on-statistics-and-zoom-levels)
     * [Retrieve values for individual bases in a range](#retrieve-values-for-individual-bases-in-a-range)
     * [Retrieve all intervals in a range](#retrieve-all-intervals-in-a-range)
     * [Add a header to a bigWig file](#add-a-header-to-a-bigwig-file)
@@ -91,7 +92,7 @@ Other options are "min" (the minimum value), "coverage" (the fraction of bases c
 
 It's often the case that we would instead like to compute values of some number of evenly spaced bins in a given interval, which is also simple:
 
-    >>> bw.stats("1",99,200, type="max", nBins=2)
+    >>> bw.stats("1",99, 200, type="max", nBins=2)
     [1.399999976158142, 1.5]
 
 `nBins` defaults to 1, just as `type` defaults to `mean`.
@@ -100,6 +101,26 @@ If the start and end positions are omitted then the entire chromosome is used:
 
     >>> bw.stats("1")
     [1.3351851569281683]
+
+### A note on statistics and zoom levels
+
+> A note to the lay reader: This section is rather technical and included only for the sake of completeness. The summary is that if your needs require exact mean/max/etc. summary values for an interval or intervals and that a small trade-off in speed is acceptable, that you should use the `exact=True` option in the `stats()` function.
+
+By default, there are some unintuitive aspects to computing statistics on ranges in a bigWig file. The bigWig format was originally created in the context of genome browsers. There, computing exact summary statistics for a given interval is less important than quickly being able to compute an approximate statistic (after all, browsers need to be able to quickly display a number of contiguous intervals and support scrolling/zooming). Because of this, bigWig files contain not only interval-value associations, but also `sum of values`/`sum of squared values`/`minimum value`/`maximum value`/`number of bases covered` for equally sized bins of various sizes. These different sizes are referred to as "zoom levels". The smallest zoom level has bins that are 16 times the mean interval size in the file and each subsequent zoom level has bins 4 times larger than the previous. This methodology is used in Kent's tools and, therefore, likely used in almost every currently existing bigWig file.
+
+When a bigWig file is queried for a summary statistic, the size of the interval is used to determine whether to use a zoom level and, if so, which one. The optimal zoom level is that which has the largest bins no more than half the width of the desired interval. If no such zoom level exists, the original intervals are instead used for the calculation.
+
+For the sake of consistency with other tools, pyBigWig adopts this same methodology. However, since this is (A) unintuitive and (B) undesirable in some applications, pyBigWig enables computation of exact summary statistics regardless of the interval size (i.e., it allows ignoring the zoom levels). This was originally proposed [here](https://github.com/dpryan79/pyBigWig/issues/12) and an example is below:
+
+    >>> import pyBigWig
+    >>> from numpy import mean
+    >>> bw = pyBigWig.open("http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeMapability/wgEncodeCrgMapabilityAlign75mer.bigWig")
+    >>> bw.stats('chr1', 89294, 91629)
+    [0.20120902053804418]
+    >>> mean(bw.values('chr1', 89294, 91629))
+    0.22213841940688142
+    >>> bw.stats('chr1', 89294, 91629, exact=True)
+    [0.22213841940688142]
 
 ## Retrieve values for individual bases in a range
 
@@ -195,4 +216,4 @@ Wiggle and BigWig files use 0-based half-open coordinates, which are also used b
 
 # Galaxy
 
-pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). You can find it in the toolshed as `package_python_2_7_pybigwig_0_1_9`. The [IUC](https://wiki.galaxyproject.org/IUC) is currently hosting the XML definition of this on [github](https://github.com/galaxyproject/tools-iuc/tree/master/packages/package_python_2_7_10_pybigwig_0_1_9).
+pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). You can find it in the toolshed as `package_python_2_7_pybigwig_0_1_9`. The [IUC](https://wiki.galaxyproject.org/IUC) is currently hosting the XML definition of this on [github](https://github.com/galaxyproject/tools-iuc/tree/master/packages/package_python_2_7_10_pybigwig_0_2_5).
