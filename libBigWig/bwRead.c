@@ -207,7 +207,7 @@ static uint64_t readChromNonLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t key
     if(bwRead((void*) &nVals, sizeof(uint16_t), 1, bw) != 1) return -1;
 
     //These aren't actually used for anything, we just skip to the next block...
-    offset = nVals * (keySize + 8) + bw->URL->filePos + bw->URL->bufPos;
+    offset = nVals * (keySize + 8) + bwTell(bw);
 
     if(bwSetPos(bw, offset)) return -1;
     return readChromBlock(bw, cl, keySize);
