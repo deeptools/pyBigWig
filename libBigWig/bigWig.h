@@ -41,7 +41,7 @@
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.1.6
+#define LIBBIGWIG_VERSION 0.1.7
 
 /*!
  * The magic number of a bigWig file.

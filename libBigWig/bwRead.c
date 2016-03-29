@@ -201,16 +201,21 @@ error:
 }
 
 static uint64_t readChromNonLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize) {
-    uint64_t offset;
-    uint16_t nVals;
+    uint64_t offset , rv = 0, previous;
+    uint16_t nVals, i;
 
     if(bwRead((void*) &nVals, sizeof(uint16_t), 1, bw) != 1) return -1;
 
-    //These aren't actually used for anything, we just skip to the next block...
-    offset = nVals * (keySize + 8) + bwTell(bw);
+    previous = bwTell(bw) + keySize;
+    for(i=0; i<nVals; i++) {
+        if(bwSetPos(bw, previous)) return -1;
+        if(bwRead((void*) &offset, sizeof(uint64_t), 1, bw) != 1) return -1;
+        if(bwSetPos(bw, offset)) return -1;
+        rv += readChromBlock(bw, cl, keySize);
+        previous += 8 + keySize;
+    }
 
-    if(bwSetPos(bw, offset)) return -1;
-    return readChromBlock(bw, cl, keySize);
+    return rv;
 }
 
 static uint64_t readChromBlock(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize) {
