@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include "io.h"
 #include <inttypes.h>
+#include <errno.h>
 
 size_t GLOBAL_DEFAULTBUFFERSIZE;
 
@@ -158,7 +159,7 @@ URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*), const char *mode) {
             URL->x.fp = fopen(fname, "rb");
             if(!(URL->x.fp)) {
                 free(URL);
-                fprintf(stderr, "[urlOpen] Couldn't open %s for reading\n", fname);
+                fprintf(stderr, "[urlOpen] Couldn't open %s for reading (%s)\n", fname, strerror(errno));
                 return NULL;
             }
         } else {
