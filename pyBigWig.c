@@ -123,7 +123,7 @@ error :
 
 enum bwStatsType char2enum(char *s) {
     if(strcmp(s, "mean") == 0) return mean;
-    if(strcmp(s, "std") == 0) return std;
+    if(strcmp(s, "std") == 0) return stdev;
     if(strcmp(s, "dev") == 0) return dev;
     if(strcmp(s, "max") == 0) return max;
     if(strcmp(s, "min") == 0) return min;
