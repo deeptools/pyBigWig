@@ -3,6 +3,10 @@
 #include <inttypes.h>
 #include <zlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*! \mainpage libBigWig
  *
  * \section Introduction
@@ -41,7 +45,7 @@
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.1.7
+#define LIBBIGWIG_VERSION 0.2.0
 
 /*!
  * The magic number of a bigWig file.
@@ -71,7 +75,6 @@ enum bwStatsType {
     doesNotExist = -1,
     mean = 0,
     average = 0,
-    std = 1,
     stdev = 1,
     dev = 1,
     max = 2,
@@ -425,3 +428,7 @@ int bwAddIntervalSpanSteps(bigWigFile_t *fp, char *chrom, uint32_t start, uint32
  * @see bwAddIntervalSpanSteps
  */
 int bwAppendIntervalSpanSteps(bigWigFile_t *fp, float *values, uint32_t n);
+
+#ifdef __cplusplus
+}
+#endif
