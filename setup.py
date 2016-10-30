@@ -4,6 +4,12 @@ from distutils import sysconfig
 import subprocess
 import glob
 import sys
+try:
+    import numpy as np
+    from numpy.distutils.misc_util import get_info
+    WITHNUMPY = True
+except:
+    WITHNUMPY = False
 
 srcs = [x for x in 
     glob.glob("libBigWig/*.c")]
@@ -32,11 +38,21 @@ for v in foo:
     if(v[0:2] == "-L") :
         additional_libs.append(v[2:])
 
+include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")]
+defines = []
+if WITHNUMPY is True:
+    include_dirs.append(np.get_include())
+    defines.extend([('WITHNUMPY', None), ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')])
+    extra_info = get_info('npymath')
+    libs.extend(extra_info['libraries'])
+    additional_libs.extend(extra_info['library_dirs'])
+
 module1 = Extension('pyBigWig',
                     sources = srcs,
                     libraries = libs,
                     library_dirs = additional_libs, 
-                    include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")])
+                    define_macros = defines,
+                    include_dirs = include_dirs)
 
 setup(name = 'pyBigWig',
        version = '0.2.8',
@@ -62,5 +78,6 @@ setup(name = 'pyBigWig',
                      "Operating System :: Unix",
                      "Operating System :: MacOS"],
        packages = find_packages(),
-       include_package_data=True,
+       include_package_data = True,
+       extras_require = {'numpy input': ["numpy"]},
        ext_modules = [module1])
