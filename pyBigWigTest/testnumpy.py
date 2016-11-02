@@ -51,5 +51,11 @@ compy(300, values3)
 compy(400, values4)
 compy(500, values5)
 
+# Get values as a numpy array
+foo = bw.values("1", 0, 100, numpy=False)
+assert(isinstance(foo, list))
+foo = bw.values("1", 0, 100, numpy=True)
+assert(isinstance(foo, np.ndarray))
+
 bw.close()
 os.remove("/tmp/delete.bw")

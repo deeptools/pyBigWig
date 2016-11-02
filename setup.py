@@ -5,8 +5,8 @@ import subprocess
 import glob
 import sys
 try:
-    import numpy as np
     from numpy.distutils.misc_util import get_info
+    from os.path import dirname
     WITHNUMPY = True
 except:
     WITHNUMPY = False
@@ -41,11 +41,12 @@ for v in foo:
 include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")]
 defines = []
 if WITHNUMPY is True:
-    include_dirs.append(np.get_include())
     defines.extend([('WITHNUMPY', None), ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')])
     extra_info = get_info('npymath')
+    include_dirs.extend(extra_info['include_dirs'])
     libs.extend(extra_info['libraries'])
-    additional_libs.extend(extra_info['library_dirs'])
+    extra_info['library_dirs'].extend(additional_libs)
+    additional_libs = extra_info['library_dirs']
 
 module1 = Extension('pyBigWig',
                     sources = srcs,

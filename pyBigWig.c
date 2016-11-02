@@ -342,7 +342,11 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 
 //Fetch a list of individual values
 //For bases with no coverage, the value should be None
+#ifdef WITHNUMPY
+static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+#else
 static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
+#endif
     bigWigFile_t *bw = self->bw;
     int i;
     uint32_t start, end = -1, tid;
@@ -350,8 +354,14 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     char *chrom;
     PyObject *ret;
     bwOverlappingIntervals_t *o;
+#ifdef WITHNUMPY
+    static char *kwd_list[] = {"chrom", "start", "end", "numpy", NULL};
+    PyObject *outputNumpy = Py_False;
 
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "skk|O", kwd_list, &chrom, &startl, &endl, &outputNumpy)) {
+#else
     if(!PyArg_ParseTuple(args, "skk", &chrom, &startl, &endl)) {
+#endif
         PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
         return NULL;
     }
@@ -375,9 +385,21 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
         return NULL;
     }
 
-    ret = PyList_New(end-start);
-    for(i=0; i<(int) o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
-    bwDestroyOverlappingIntervals(o);
+#ifdef WITHNUMPY
+    if(outputNumpy == Py_True) {
+        npy_intp len = end - start;
+        ret = PyArray_SimpleNewFromData(1, &len, NPY_FLOAT, (void *) o->value);
+        free(o->start);
+        free(o->end);
+        free(o);
+    } else {
+#endif
+        ret = PyList_New(end-start);
+        for(i=0; i<(int) o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
+        bwDestroyOverlappingIntervals(o);
+#ifdef WITHNUMPY
+    }
+#endif
 
     return ret;
 }
@@ -816,7 +838,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 
         if(PyList_Check(starts)) ustart = Numeric2Uint(PyList_GetItem(starts, 0));
 #ifdef WITHNUMPY
-        else if(PyArray_Check(starts)) ustart = getNumpyU32(starts, 0);
+        else ustart = getNumpyU32((PyArrayObject*) starts, 0);
 #endif
         if(PyErr_Occurred()) return 0;
         if(ustart < self->lastStart) return 0;
@@ -1009,7 +1031,7 @@ int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts,
 #ifdef WITHNUMPY
     } else {
         for(i=0; i<sz; i++) {
-            ustarts[i] = getNumpyU32(starts, i);
+            ustarts[i] = getNumpyU32((PyArrayObject*) starts, i);
             if(PyErr_Occurred()) goto error;
         }
 #endif
@@ -1022,7 +1044,7 @@ int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts,
 #ifdef WITHNUMPY
     } else {
         for(i=0; i<sz; i++) {
-            fvalues[i] = getNumpyF(values, i);
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
             if(PyErr_Occurred()) goto error;
         }
 #endif
@@ -1071,7 +1093,7 @@ int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *valu
 #ifdef WITHNUMPY
     } else {
         for(i=0; i<sz; i++) {
-            ustarts[i] = getNumpyU32(starts, i);
+            ustarts[i] = getNumpyU32((PyArrayObject*) starts, i);
             if(PyErr_Occurred()) goto error;
         }
 #endif
@@ -1084,7 +1106,7 @@ int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *valu
 #ifdef WITHNUMPY
     } else {
         for(i=0; i<sz; i++) {
-            fvalues[i] = getNumpyF(values, i);
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
             if(PyErr_Occurred()) goto error;
         }
 #endif
@@ -1105,7 +1127,7 @@ error:
 //Returns 0 on success, 1 on error. Sets self->lastTid/self->lastSpan/lastStep/lastStart (unless there was an error)
 int PyAddIntervalSpanSteps(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span, PyObject *step) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     char *cchrom = NULL;
     uint32_t n, ustarts, uspan, ustep;
     float *fvalues = NULL;
@@ -1130,7 +1152,7 @@ int PyAddIntervalSpanSteps(pyBigWigFile_t *self, PyObject *chroms, PyObject *sta
 #ifdef WITHNUMPY
     } else {
         for(i=0; i<sz; i++) {
-            fvalues[i] = getNumpyF(values, i);
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
             if(PyErr_Occurred()) goto error;
         }
 #endif
@@ -1174,7 +1196,7 @@ int PyAppendIntervalSpanSteps(pyBigWigFile_t *self, PyObject *values) {
 #ifdef WITHNUMPY
     } else {
         for(i=0; i<sz; i++) {
-            fvalues[i] = getNumpyF(values, i);
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
             if(PyErr_Occurred()) goto error;
         }
 #endif
@@ -1199,7 +1221,6 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
     Py_ssize_t i, sz = 0;
     PyObject *tmp;
 #ifdef WITHNUMPY
-    void *foo;
     char *tmpStr;
 #endif
 
@@ -1277,7 +1298,7 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
                 ustart = Numeric2Uint(PyList_GetItem(starts, i));
 #ifdef WITHNUMPY
             } else {
-                ustart = getNumpyU32(starts, i);
+                ustart = getNumpyU32((PyArrayObject*)starts, i);
 #endif
             }
             if(PyErr_Occurred()) return 0;
@@ -1370,7 +1391,6 @@ PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 
 error:
-//    PyErr_SetString(PyExc_RuntimeError, "Received an error while adding the intervals.");
     return NULL;
 }
 
@@ -1389,18 +1409,33 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
 
     Py_INCREF(&bigWigFile);
     PyModule_AddObject(res, "pyBigWig", (PyObject *) &bigWigFile);
+
+#ifdef WITHNUMPY
+    //Add the numpy constant
     import_array(); //Needed for numpy stuff to work
+    PyModule_AddIntConstant(res, "numpy", 1);
+#else
+    PyModule_AddIntConstant(res, "numpy", 0);
+#endif
 
     return res;
 }
 #else
 //Python2 initialization
 PyMODINIT_FUNC initpyBigWig(void) {
+    PyObject *res;
     errno=0; //Sometimes libpython2.7.so is missing some links...
     if(Py_AtExit(bwCleanup)) return;
     if(PyType_Ready(&bigWigFile) < 0) return;
     if(bwInit(128000)) return; //This is temporary
-    Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
+    res = Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
+
+#ifdef WITHNUMPY
+    //Add the numpy constant
     import_array(); //Needed for numpy stuff to work
+    PyModule_AddIntConstant(res, "numpy", 1);
+#else
+    PyModule_AddIntConstant(res, "numpy", 0);
+#endif
 }
 #endif
