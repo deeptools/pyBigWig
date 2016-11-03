@@ -474,7 +474,7 @@ char *PyString_AsString(PyObject *obj) {
 //Will return 1 for long or int types currently
 int isNumeric(PyObject *obj) {
 #ifdef WITHNUMPY
-    if(PyArray_IsIntegerScalar(obj)) return 1;
+    if(PyArray_IsScalar(obj, Integer)) return 1;
 #endif
 #if PY_MAJOR_VERSION < 3
     if(PyInt_Check(obj)) return 1;
