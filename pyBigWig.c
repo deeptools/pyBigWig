@@ -1,5 +1,4 @@
 #include <Python.h>
-#include <assert.h>
 #include <inttypes.h>
 #include "pyBigWig.h"
 
@@ -122,7 +121,7 @@ error:
 
 char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
     char *p , *o = NULL;
-    npy_intp stride;
+    npy_intp stride, j;
     int dtype;
 
     //Get the dtype
@@ -130,24 +129,24 @@ char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
     //Get the stride
     stride = PyArray_STRIDE(obj, 0);
     p = PyArray_BYTES(obj) + i*stride;
-    o = calloc(1, stride + 1);
 
     switch(dtype) {
     case NPY_STRING:
+        o = calloc(1, stride + 1);
         strncpy(o, p, stride);
         return o;
     case NPY_UNICODE:
-        printf("Crap, unicode!\n");
-        return p;
+        o = calloc(1, stride/4 + 1);
+        for(j=0; j<stride/4; j++) o[j] = (char) ((uint32_t*)p)[4*j];
+        return o;
     default:
         PyErr_SetString(PyExc_RuntimeError, "Received unknown data type!\n");
         break;
     }
-    return p;
+    return NULL;
 }
 #endif
 
-//Need to add proper error handling rather than just assert()
 PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     char *fname = NULL;
     char *mode = "r";
@@ -474,6 +473,9 @@ char *PyString_AsString(PyObject *obj) {
 
 //Will return 1 for long or int types currently
 int isNumeric(PyObject *obj) {
+#ifdef WITHNUMPY
+    if(PyArray_IsIntegerScalar(obj)) return 1;
+#endif
 #if PY_MAJOR_VERSION < 3
     if(PyInt_Check(obj)) return 1;
 #endif
