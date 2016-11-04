@@ -102,7 +102,7 @@ float getNumpyF(PyArrayObject *obj, Py_ssize_t i) {
             PyErr_SetString(PyExc_RuntimeError, "Received a floating point value greater than possible for a 32-bit float!\n");
             goto error;
         }
-        if(((double*)p)[0] < FLT_MIN) {
+        if(((double*)p)[0] < -FLT_MAX) {
             PyErr_SetString(PyExc_RuntimeError, "Received a floating point value less than possible for a 32-bit float!\n");
             goto error;
         }
@@ -698,7 +698,7 @@ int isType0(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values
         }
 #ifdef WITHNUMPY
     } else {
-        if(!PyArray_ISFLOAT( (PyArrayObject*) values)) return rv;
+        if(!PyArray_ISFLOAT((PyArrayObject*) values)) return rv;
 #endif
     }
     return 1;
