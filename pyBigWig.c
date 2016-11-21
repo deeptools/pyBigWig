@@ -1,9 +1,152 @@
 #include <Python.h>
-#include <assert.h>
 #include <inttypes.h>
 #include "pyBigWig.h"
 
-//Need to add proper error handling rather than just assert()
+#ifdef WITHNUMPY
+#include <values.h>
+#include "numpy/npy_common.h"
+#include "numpy/halffloat.h"
+#include "numpy/ndarrayobject.h"
+
+int lsize = NPY_SIZEOF_LONG;
+
+//Raises an exception on error, which should be checked
+uint32_t getNumpyU32(PyArrayObject *obj, Py_ssize_t i) {
+    int dtype;
+    char *p;
+    uint32_t o = 0;
+    npy_intp stride;
+
+    //Get the dtype
+    dtype = PyArray_TYPE(obj);
+    //Get the stride
+    stride = PyArray_STRIDE(obj, 0);
+    p = PyArray_BYTES(obj) + i*stride;
+
+    switch(dtype) {
+    case NPY_INT8:
+        if(((int8_t *) p)[0] < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Received an integer < 0!\n");
+            goto error;
+        }
+        o += ((int8_t *) p)[0];
+        break;
+    case NPY_INT16:
+        if(((int16_t *) p)[0] < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Received an integer < 0!\n");
+            goto error;
+        }
+        o += ((int16_t *) p)[0];
+        break;
+    case NPY_INT32:
+        if(((int32_t *) p)[0] < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Received an integer < 0!\n");
+            goto error;
+        }
+        o += ((int32_t *) p)[0];
+        break;
+    case NPY_INT64:
+        if(((int64_t *) p)[0] < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Received an integer < 0!\n");
+            goto error;
+        }
+        o += ((int64_t *) p)[0];
+        break;
+    case NPY_UINT8:
+        o += ((uint8_t *) p)[0];
+        break;
+    case NPY_UINT16:
+        o += ((uint16_t *) p)[0];
+        break;
+    case NPY_UINT32:
+        o += ((uint32_t *) p)[0];
+        break;
+    case NPY_UINT64:
+        if(((uint64_t *) p)[0] > (uint32_t) -1) {
+            PyErr_SetString(PyExc_RuntimeError, "Received an integer larger than possible for a 32bit unsigned integer!\n");
+            goto error;
+        }
+        o += ((uint64_t *) p)[0];
+        break;
+    default:
+        PyErr_SetString(PyExc_RuntimeError, "Received unknown data type for conversion to uint32_t!\n");
+        goto error;
+        break;
+    }
+    return o;
+
+error:
+    return 0;
+};
+
+//Raises an exception on error, which should be checked
+float getNumpyF(PyArrayObject *obj, Py_ssize_t i) {
+    int dtype;
+    char *p;
+    float o = 0.0;
+    npy_intp stride;
+
+    //Get the dtype
+    dtype = PyArray_TYPE(obj);
+    //Get the stride
+    stride = PyArray_STRIDE(obj, 0);
+    p = PyArray_BYTES(obj) + i*stride;
+
+    switch(dtype) {
+    case NPY_FLOAT16:
+        return npy_half_to_float(((npy_half*)p)[0]);
+    case NPY_FLOAT32:
+        return ((float*)p)[0];
+    case NPY_FLOAT64:
+        if(((double*)p)[0] > FLT_MAX) {
+            PyErr_SetString(PyExc_RuntimeError, "Received a floating point value greater than possible for a 32-bit float!\n");
+            goto error;
+        }
+        if(((double*)p)[0] < -FLT_MAX) {
+            PyErr_SetString(PyExc_RuntimeError, "Received a floating point value less than possible for a 32-bit float!\n");
+            goto error;
+        }
+        o += ((double*)p)[0];
+        return o;
+    default:
+        PyErr_SetString(PyExc_RuntimeError, "Received unknown data type for conversion to float!\n");
+        goto error;
+        break;
+    }
+    return o;
+
+error:
+    return 0;
+}
+
+char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
+    char *p , *o = NULL;
+    npy_intp stride, j;
+    int dtype;
+
+    //Get the dtype
+    dtype = PyArray_TYPE(obj);
+    //Get the stride
+    stride = PyArray_STRIDE(obj, 0);
+    p = PyArray_BYTES(obj) + i*stride;
+
+    switch(dtype) {
+    case NPY_STRING:
+        o = calloc(1, stride + 1);
+        strncpy(o, p, stride);
+        return o;
+    case NPY_UNICODE:
+        o = calloc(1, stride/4 + 1);
+        for(j=0; j<stride/4; j++) o[j] = (char) ((uint32_t*)p)[4*j];
+        return o;
+    default:
+        PyErr_SetString(PyExc_RuntimeError, "Received unknown data type!\n");
+        break;
+    }
+    return NULL;
+}
+#endif
+
 PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     char *fname = NULL;
     char *mode = "r";
@@ -198,7 +341,11 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 
 //Fetch a list of individual values
 //For bases with no coverage, the value should be None
+#ifdef WITHNUMPY
+static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+#else
 static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
+#endif
     bigWigFile_t *bw = self->bw;
     int i;
     uint32_t start, end = -1, tid;
@@ -206,8 +353,14 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     char *chrom;
     PyObject *ret;
     bwOverlappingIntervals_t *o;
+#ifdef WITHNUMPY
+    static char *kwd_list[] = {"chrom", "start", "end", "numpy", NULL};
+    PyObject *outputNumpy = Py_False;
 
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "skk|O", kwd_list, &chrom, &startl, &endl, &outputNumpy)) {
+#else
     if(!PyArg_ParseTuple(args, "skk", &chrom, &startl, &endl)) {
+#endif
         PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
         return NULL;
     }
@@ -231,9 +384,21 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
         return NULL;
     }
 
-    ret = PyList_New(end-start);
-    for(i=0; i<(int) o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
-    bwDestroyOverlappingIntervals(o);
+#ifdef WITHNUMPY
+    if(outputNumpy == Py_True) {
+        npy_intp len = end - start;
+        ret = PyArray_SimpleNewFromData(1, &len, NPY_FLOAT, (void *) o->value);
+        free(o->start);
+        free(o->end);
+        free(o);
+    } else {
+#endif
+        ret = PyList_New(end-start);
+        for(i=0; i<(int) o->l; i++) PyList_SetItem(ret, i, PyFloat_FromDouble(o->value[i]));
+        bwDestroyOverlappingIntervals(o);
+#ifdef WITHNUMPY
+    }
+#endif
 
     return ret;
 }
@@ -308,6 +473,9 @@ char *PyString_AsString(PyObject *obj) {
 
 //Will return 1 for long or int types currently
 int isNumeric(PyObject *obj) {
+#ifdef WITHNUMPY
+    if(PyArray_IsScalar(obj, Integer)) return 1;
+#endif
 #if PY_MAJOR_VERSION < 3
     if(PyInt_Check(obj)) return 1;
 #endif
@@ -442,59 +610,146 @@ error:
 //1 on true, 0 on false
 int isType0(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
     int rv = 0;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     PyObject *tmp;
 
-    if(chroms && starts && ends) {
-        if(!PyList_Check(chroms)) return rv;
-        if(!PyList_Check(starts)) return rv;
-        if(!PyList_Check(ends)) return rv;
-        if(!PyList_Check(values)) return rv;
-        sz = PyList_Size(chroms);
+    if(!PyList_Check(chroms)
+#ifdef WITHNUMPY
+        && !PyArray_Check(chroms)
+#endif
+        ) return rv;
+    if(!PyList_Check(starts)
+#ifdef WITHNUMPY
+        && !PyArray_Check(starts)
+#endif
+        ) return rv;
+    if(!PyList_Check(ends)
+#ifdef WITHNUMPY
+        && !PyArray_Check(ends)
+#endif
+        ) return rv;
+    if(!PyList_Check(values)
+#ifdef WITHNUMPY
+        && !PyArray_Check(values)
+#endif
+        ) return rv;
+    if(PyList_Check(chroms)) sz = PyList_Size(chroms);
+#ifdef WITHNUMPY
+    if(PyArray_Check(chroms)) sz += PyArray_Size(chroms);
+#endif
 
+    if(PyList_Check(starts)) {
         if(sz != PyList_Size(starts)) return rv;
+#ifdef WITHNUMPY
+    } else {
+        if(sz != PyArray_Size(starts)) return rv;
+#endif
+    }
+    if(PyList_Check(ends)) {
         if(sz != PyList_Size(ends)) return rv;
+#ifdef WITHNUMPY
+    } else {
+        if(sz != PyArray_Size(ends)) return rv;
+#endif
+    }
+    if(PyList_Check(values)) {
         if(sz != PyList_Size(values)) return rv;
+#ifdef WITHNUMPY
+    } else {
+        if(sz != PyArray_Size(values)) return rv;
+#endif
+    }
 
+    //Ensure chroms contains strings, etc.
+    if(PyList_Check(chroms)) {
         for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(chroms, i);
             if(!PyString_Check(tmp)) return rv;
+        }
+#ifdef WITHNUMPY
+    } else {
+        if(!PyArray_ISSTRING( (PyArrayObject*) chroms)) return rv;
+#endif
+    }
+    if(PyList_Check(starts)) {
+        for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(starts, i);
             if(!isNumeric(tmp)) return rv;
+        }
+#ifdef WITHNUMPY
+    } else {
+        if(!PyArray_ISINTEGER( (PyArrayObject*) starts)) return rv;
+#endif
+    }
+    if(PyList_Check(ends)) {
+        for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(ends, i);
             if(!isNumeric(tmp)) return rv;
+        }
+#ifdef WITHNUMPY
+    } else {
+        if(!PyArray_ISINTEGER( (PyArrayObject*) ends)) return rv;
+#endif
+    }
+    if(PyList_Check(values)) {
+        for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(values, i);
             if(!PyFloat_Check(tmp)) return rv;
         }
-        rv = 1;
+#ifdef WITHNUMPY
+    } else {
+        if(!PyArray_ISFLOAT((PyArrayObject*) values)) return rv;
+#endif
     }
-    return rv;
+    return 1;
 }
 
 //single chrom, multiple starts, single span
 int isType1(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span) {
     int rv = 0;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     PyObject *tmp;
 
-    if(span) {
-        if(!PyString_Check(chroms)) return rv;
-        if(!PyList_Check(starts)) return rv;
-        if(!PyList_Check(values)) return rv;
-        if(!isNumeric(span)) return rv;
-        sz = PyList_Size(starts);
+    if(!PyString_Check(chroms)) return rv;
+    if(!PyList_Check(starts)
+#ifdef WITHNUMPY
+        && !PyArray_Check(starts)
+#endif
+        ) return rv;
+    if(!PyList_Check(values)
+#ifdef WITHNUMPY
+        && !PyArray_Check(values)
+#endif
+        ) return rv;
+    if(!isNumeric(span)) return rv;
 
-        if(sz != PyList_Size(values)) return rv;
+    if(PyList_Check(starts)) sz = PyList_Size(starts);
+    if(PyArray_Check(starts)) sz += PyArray_Size(starts);
 
+    if(PyList_Check(values)) if(sz != PyList_Size(values)) return rv;
+    if(PyArray_Check(values)) if(sz != PyArray_Size(values)) return rv;
+
+    if(PyList_Check(starts)) {
         for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(starts, i);
             if(!isNumeric(tmp)) return rv;
+        }
+#ifdef WITHNUMPY
+    } else {
+        if(!PyArray_ISINTEGER( (PyArrayObject*) starts)) return rv;
+#endif
+    }
+    if(PyList_Check(values)) {
+        for(i=0; i<sz; i++) {
             tmp = PyList_GetItem(values, i);
             if(!PyFloat_Check(tmp)) return rv;
         }
-        rv = 1;
+#ifdef WITHNUMPY
+    } else {
+        if(!PyArray_ISFLOAT( (PyArrayObject*) values)) return rv;
+#endif
     }
-    return rv;
+    return 1;
 }
 
 //Single chrom, single start, single span, single step, multiple values
@@ -508,10 +763,16 @@ int isType2(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span
     if(!PyString_Check(chroms)) return rv;
     if(!isNumeric(starts)) return rv;
 
-    sz = PyList_Size(values);
-    for(i=0; i<sz; i++) {
-        tmp = PyList_GetItem(values, i);
-        if(!PyFloat_Check(tmp)) return rv;
+    if(PyList_Check(values)) {
+        sz = PyList_Size(values);
+        for(i=0; i<sz; i++) {
+            tmp = PyList_GetItem(values, i);
+            if(!PyFloat_Check(tmp)) return rv;
+        }
+#ifdef WITHNUMPY
+    } else {
+        if(!PyArray_ISFLOAT( (PyArrayObject*) values)) return rv;
+#endif
     }
     rv = 1;
     return rv;
@@ -530,9 +791,10 @@ int getType(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values
 //1: Can use a bwAppend* function. 0: must use a bwAdd* function
 int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject *starts, PyObject *span, PyObject *step) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     uint32_t tid, uspan, ustep, ustart;
     PyObject *tmp;
+    void *foo;
 
     if(self->lastType == -1) return 0;
     if(self->lastTid == -1) return 0;
@@ -541,13 +803,29 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
     //We can only append if (A) we have the same type or (B) the same chromosome (and compatible span/step/starts
     if(desiredType == 0) {
         //We need (A) chrom == lastTid and (B) all chroms to be the same
-        sz = PyList_Size(chroms);
+        if(PyList_Check(chroms)) sz = PyList_Size(chroms);
+#ifdef WITHNUMPY
+        if(PyArray_Check(chroms)) sz = PyArray_Size(chroms);
+#endif
         for(i=0; i<sz; i++) {
-            tmp = PyList_GetItem(chroms, i);
-            tid = bwGetTid(bw, PyString_AsString(tmp));
+            if(PyList_Check(chroms)) {
+                tmp = PyList_GetItem(chroms, i);
+                tid = bwGetTid(bw, PyString_AsString(tmp));
+#ifdef WITHNUMPY
+            } else {
+                foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
+                tid = bwGetTid(bw, PyString_AsString(PyArray_GETITEM((PyArrayObject*)chroms, foo)));
+#endif
+            }
             if(tid != (uint32_t) self->lastTid) return 0;
         }
-        ustart = Numeric2Uint(PyList_GetItem(starts, 0));
+        if(PyList_Check(starts)) {
+            ustart = Numeric2Uint(PyList_GetItem(starts, 0));
+#ifdef WITHNUMPY
+        } else {
+            ustart = getNumpyU32((PyArrayObject*)starts, 0);
+#endif
+        }
         if(PyErr_Occurred()) return 0;
         if(ustart < self->lastStart) return 0;
         return 1;
@@ -560,7 +838,10 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         tid = bwGetTid(bw, PyString_AsString(chroms));
         if(tid != (uint32_t) self->lastTid) return 0;
 
-        ustart = Numeric2Uint(PyList_GetItem(starts, 0));
+        if(PyList_Check(starts)) ustart = Numeric2Uint(PyList_GetItem(starts, 0));
+#ifdef WITHNUMPY
+        else ustart = getNumpyU32((PyArrayObject*) starts, 0);
+#endif
         if(PyErr_Occurred()) return 0;
         if(ustart < self->lastStart) return 0;
         return 1;
@@ -588,13 +869,17 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 //Returns 0 on success, 1 on error. Sets self->lastTid && self->lastStart (unless there was an error)
 int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     char **cchroms = NULL;
     uint32_t n, *ustarts = NULL, *uends = NULL;
     float *fvalues = NULL;
     int rv;
+    void *foo;
 
-    sz = PyList_Size(starts);
+    if(PyList_Check(starts)) sz = PyList_Size(starts);
+#ifdef WITHNUMPY
+    if(PyArray_Check(starts)) sz += PyArray_Size(starts);
+#endif
     n = (uint32_t) sz;
 
     //Allocate space
@@ -605,10 +890,38 @@ int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyO
     if(!cchroms || !ustarts || !uends || !fvalues) goto error;
 
     for(i=0; i<sz; i++) {
-        cchroms[i] = PyString_AsString(PyList_GetItem(chroms, i));
-        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
-        uends[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(ends, i));
-        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+        if(PyList_Check(chroms)) {
+            cchroms[i] = PyString_AsString(PyList_GetItem(chroms, i));
+#ifdef WITHNUMPY
+        } else {
+            foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
+            cchroms[i] = PyString_AsString(PyArray_GETITEM((PyArrayObject*)chroms, foo));
+#endif
+        }
+        if(PyList_Check(starts)) {
+            ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+#ifdef WITHNUMPY
+        } else {
+            ustarts[i] = getNumpyU32((PyArrayObject*)starts, i);
+#endif
+        }
+        if(PyErr_Occurred()) goto error;
+        if(PyList_Check(ends)) {
+            uends[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(ends, i));
+#ifdef WITHNUMPY
+        } else {
+            uends[i] = getNumpyU32((PyArrayObject*)ends, i);
+#endif
+        }
+        if(PyErr_Occurred()) goto error;
+        if(PyList_Check(values)) {
+            fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+#ifdef WITHNUMPY
+        } else {
+            fvalues[i] = getNumpyF((PyArrayObject*)values, i);
+#endif
+        }
+        if(PyErr_Occurred()) goto error;
     }
 
     rv = bwAddIntervals(bw, cchroms, ustarts, uends, fvalues, n);
@@ -633,12 +946,15 @@ error:
 //Returns 0 on success, 1 on error. Update self->lastStart
 int PyAppendIntervals(pyBigWigFile_t *self, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     uint32_t n, *ustarts = NULL, *uends = NULL;
     float *fvalues = NULL;
     int rv;
 
-    sz = PyList_Size(starts);
+    if(PyList_Check(starts)) sz = PyList_Size(starts);
+#ifdef WITHNUMPY
+    if(PyArray_Check(starts)) sz += PyArray_Size(starts);
+#endif
     n = (uint32_t) sz;
 
     //Allocate space
@@ -648,9 +964,30 @@ int PyAppendIntervals(pyBigWigFile_t *self, PyObject *starts, PyObject *ends, Py
     if(!ustarts || !uends || !fvalues) goto error;
 
     for(i=0; i<sz; i++) {
-        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
-        uends[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(ends, i));
-        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+        if(PyList_Check(starts)) {
+            ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+#ifdef WITHNUMPY
+        } else {
+            ustarts[i] = getNumpyU32((PyArrayObject*) starts, i);
+#endif
+        }
+        if(PyErr_Occurred()) goto error;
+        if(PyList_Check(ends)) {
+            uends[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(ends, i));
+#ifdef WITHNUMPY
+        } else {
+            uends[i] = getNumpyU32((PyArrayObject*) ends, i);
+#endif
+        }
+        if(PyErr_Occurred()) goto error;
+        if(PyList_Check(values)) {
+            fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+#ifdef WITHNUMPY
+        } else {
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
+#endif
+        }
+        if(PyErr_Occurred()) goto error;
     }
     rv = bwAppendIntervals(bw, ustarts, uends, fvalues, n);
     if(rv) self->lastStart = uends[n-1];
@@ -669,13 +1006,16 @@ error:
 //Returns 0 on success, 1 on error. Sets self->lastTid/lastStart/lastSpan (unless there was an error)
 int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     char *cchroms = NULL;
     uint32_t n, *ustarts = NULL, uspan;
     float *fvalues = NULL;
     int rv;
 
-    sz = PyList_Size(starts);
+    if(PyList_Check(starts)) sz = PyList_Size(starts);
+#ifdef WITHNUMPY
+    else if(PyArray_Check(starts)) sz += PyArray_Size(starts);
+#endif
     n = (uint32_t) sz;
 
     //Allocate space
@@ -685,9 +1025,31 @@ int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts,
     uspan = (uint32_t) PyLong_AsLong(span);
     cchroms = PyString_AsString(chroms);
 
-    for(i=0; i<sz; i++) {
-        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
-        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    if(PyList_Check(starts)) {
+        for(i=0; i<sz; i++) {
+            ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+            if(PyErr_Occurred()) goto error;
+        }
+#ifdef WITHNUMPY
+    } else {
+        for(i=0; i<sz; i++) {
+            ustarts[i] = getNumpyU32((PyArrayObject*) starts, i);
+            if(PyErr_Occurred()) goto error;
+        }
+#endif
+    }
+    if(PyList_Check(values)) {
+        for(i=0; i<sz; i++) {
+            fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+            if(PyErr_Occurred()) goto error;
+        }
+#ifdef WITHNUMPY
+    } else {
+        for(i=0; i<sz; i++) {
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
+            if(PyErr_Occurred()) goto error;
+        }
+#endif
     }
 
     rv = bwAddIntervalSpans(bw, cchroms, ustarts, uspan, fvalues, n);
@@ -709,12 +1071,15 @@ error:
 //Returns 0 on success, 1 on error. Updates self->lastStart
 int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *values) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     uint32_t n, *ustarts = NULL;
     float *fvalues = NULL;
     int rv;
 
-    sz = PyList_Size(starts);
+    if(PyList_Check(starts)) sz = PyList_Size(starts);
+#ifdef WITHNUMPY
+    else if(PyArray_Check(starts)) sz += PyArray_Size(starts);
+#endif
     n = (uint32_t) sz;
 
     //Allocate space
@@ -722,9 +1087,31 @@ int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *valu
     fvalues = calloc(n, sizeof(float));
     if(!ustarts || !fvalues) goto error;
 
-    for(i=0; i<sz; i++) {
-        ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
-        fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    if(PyList_Check(starts)) {
+        for(i=0; i<sz; i++) {
+            ustarts[i] = (uint32_t) PyLong_AsLong(PyList_GetItem(starts, i));
+            if(PyErr_Occurred()) goto error;
+        }
+#ifdef WITHNUMPY
+    } else {
+        for(i=0; i<sz; i++) {
+            ustarts[i] = getNumpyU32((PyArrayObject*) starts, i);
+            if(PyErr_Occurred()) goto error;
+        }
+#endif
+    }
+    if(PyList_Check(values)) {
+        for(i=0; i<sz; i++) {
+            fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+            if(PyErr_Occurred()) goto error;
+        }
+#ifdef WITHNUMPY
+    } else {
+        for(i=0; i<sz; i++) {
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
+            if(PyErr_Occurred()) goto error;
+        }
+#endif
     }
 
     rv = bwAppendIntervalSpans(bw, ustarts, fvalues, n);
@@ -742,13 +1129,16 @@ error:
 //Returns 0 on success, 1 on error. Sets self->lastTid/self->lastSpan/lastStep/lastStart (unless there was an error)
 int PyAddIntervalSpanSteps(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span, PyObject *step) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     char *cchrom = NULL;
     uint32_t n, ustarts, uspan, ustep;
     float *fvalues = NULL;
     int rv;
 
-    sz = PyList_Size(values);
+    if(PyList_Check(values)) sz = PyList_Size(values);
+#ifdef WITHNUMPY
+    else if(PyArray_Check(values)) sz += PyArray_Size(values);
+#endif
     n = (uint32_t) sz;
 
     //Allocate space
@@ -759,7 +1149,16 @@ int PyAddIntervalSpanSteps(pyBigWigFile_t *self, PyObject *chroms, PyObject *sta
     ustarts = (uint32_t) PyLong_AsLong(starts);
     cchrom = PyString_AsString(chroms);
 
-    for(i=0; i<sz; i++) fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    if(PyList_Check(values)) {
+        for(i=0; i<sz; i++) fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+#ifdef WITHNUMPY
+    } else {
+        for(i=0; i<sz; i++) {
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
+            if(PyErr_Occurred()) goto error;
+        }
+#endif
+    }
 
     rv = bwAddIntervalSpanSteps(bw, cchrom, ustarts, uspan, ustep, fvalues, n);
     if(!rv) {
@@ -779,19 +1178,31 @@ error:
 //Returns 0 on success, 1 on error. Sets self->lastStart
 int PyAppendIntervalSpanSteps(pyBigWigFile_t *self, PyObject *values) {
     bigWigFile_t *bw = self->bw;
-    Py_ssize_t i, sz;
+    Py_ssize_t i, sz = 0;
     uint32_t n;
     float *fvalues = NULL;
     int rv;
 
-    sz = PyList_Size(values);
+    if(PyList_Check(values)) sz = PyList_Size(values);
+#ifdef WITHNUMPY
+    else if(PyArray_Check(values)) sz += PyArray_Size(values);
+#endif
     n = (uint32_t) sz;
 
     //Allocate space
     fvalues = calloc(n, sizeof(float));
     if(!fvalues) goto error;
 
-    for(i=0; i<sz; i++) fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+    if(PyList_Check(values)) {
+        for(i=0; i<sz; i++) fvalues[i] = (float) PyFloat_AsDouble(PyList_GetItem(values, i));
+#ifdef WITHNUMPY
+    } else {
+        for(i=0; i<sz; i++) {
+            fvalues[i] = getNumpyF((PyArrayObject*) values, i);
+            if(PyErr_Occurred()) goto error;
+        }
+#endif
+    }
 
     rv = bwAppendIntervalSpanSteps(bw, fvalues, n);
     if(!rv) self->lastStart += self->lastStep * n;
@@ -809,20 +1220,48 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
     uint32_t lastTid = self->lastTid;
     uint32_t lastEnd = self->lastStart;
     uint32_t cTid, ustart, uend, uspan, ustep;
-    Py_ssize_t i, sz;
-    PyObject *chrom;
+    Py_ssize_t i, sz = 0;
+    PyObject *tmp;
+#ifdef WITHNUMPY
+    char *tmpStr;
+#endif
 
     if(type == 0) {
         //Each chrom:start-end needs to be properly formed and come after prior entries
-        sz = PyList_Size(starts);
+        if(PyList_Check(starts)) sz = PyList_Size(starts);
+#ifdef WITHNUMPY
+        if(PyArray_Check(starts)) sz += PyArray_Size(starts);
+#endif
         if(sz == 0) return 0;
         for(i=0; i<sz; i++) {
-            chrom = PyList_GetItem(chroms, i);
-            cTid = bwGetTid(self->bw, PyString_AsString(chrom));
-            if(cTid == (uint32_t) -1) return 0;
-            ustart = Numeric2Uint(PyList_GetItem(starts, i));
+            if(PyList_Check(chroms)) {
+                tmp = PyList_GetItem(chroms, i);
+                cTid = bwGetTid(self->bw, PyString_AsString(tmp));
+#ifdef WITHNUMPY
+            } else {
+                tmpStr = getNumpyStr((PyArrayObject*)chroms, i);
+                cTid = bwGetTid(self->bw, tmpStr);
+                free(tmpStr);
+#endif
+            }
             if(PyErr_Occurred()) return 0;
-            uend = Numeric2Uint(PyList_GetItem(ends, i));
+            if(cTid == (uint32_t) -1) return 0;
+
+            if(PyList_Check(starts)) {
+                ustart = Numeric2Uint(PyList_GetItem(starts, i));
+#ifdef WITHNUMPY
+            } else {
+                ustart = getNumpyU32((PyArrayObject*)starts, i);
+#endif
+            }
+            if(PyErr_Occurred()) return 0;
+            if(PyList_Check(ends)) {
+                uend = Numeric2Uint(PyList_GetItem(ends, i));
+#ifdef WITHNUMPY
+            } else {
+                uend = getNumpyU32((PyArrayObject*) ends, i);
+#endif
+            }
             if(PyErr_Occurred()) return 0;
 
             if(ustart >= uend) return 0;
@@ -838,8 +1277,15 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
         return 1;
     } else if(type == 1) {
         //each chrom:start-(start+span) needs to be properly formed and come after prior entries
-        if(!PyList_Check(starts)) return 0;
-        sz = PyList_Size(starts);
+        if(!PyList_Check(starts)
+#ifdef WITHNUMPY
+            && !PyArray_Check(starts)
+#endif
+        ) return 0;
+        if(PyList_Check(starts)) sz = PyList_Size(starts);
+#ifdef WITHNUMPY
+        else if(PyArray_Check(starts)) sz += PyArray_Size(starts);
+#endif
         uspan = Numeric2Uint(span);
         if(PyErr_Occurred()) return 0;
         if(uspan < 1) return 0;
@@ -850,7 +1296,13 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
             if(lastTid > cTid) return 0;
         }
         for(i=0; i<sz; i++) {
-            ustart = Numeric2Uint(PyList_GetItem(starts, i));
+            if(PyList_Check(starts)) {
+                ustart = Numeric2Uint(PyList_GetItem(starts, i));
+#ifdef WITHNUMPY
+            } else {
+                ustart = getNumpyU32((PyArrayObject*)starts, i);
+#endif
+            }
             if(PyErr_Occurred()) return 0;
             uend = ustart + uspan;
 
@@ -941,7 +1393,6 @@ PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 
 error:
-    PyErr_SetString(PyExc_RuntimeError, "Received an error while adding the intervals.");
     return NULL;
 }
 
@@ -961,15 +1412,32 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
     Py_INCREF(&bigWigFile);
     PyModule_AddObject(res, "pyBigWig", (PyObject *) &bigWigFile);
 
+#ifdef WITHNUMPY
+    //Add the numpy constant
+    import_array(); //Needed for numpy stuff to work
+    PyModule_AddIntConstant(res, "numpy", 1);
+#else
+    PyModule_AddIntConstant(res, "numpy", 0);
+#endif
+
     return res;
 }
 #else
 //Python2 initialization
 PyMODINIT_FUNC initpyBigWig(void) {
+    PyObject *res;
     errno=0; //Sometimes libpython2.7.so is missing some links...
     if(Py_AtExit(bwCleanup)) return;
     if(PyType_Ready(&bigWigFile) < 0) return;
     if(bwInit(128000)) return; //This is temporary
-    Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
+    res = Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
+
+#ifdef WITHNUMPY
+    //Add the numpy constant
+    import_array(); //Needed for numpy stuff to work
+    PyModule_AddIntConstant(res, "numpy", 1);
+#else
+    PyModule_AddIntConstant(res, "numpy", 0);
+#endif
 }
 #endif

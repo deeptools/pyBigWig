@@ -19,6 +19,7 @@ Table of Contents
     * [Add a header to a bigWig file](#add-a-header-to-a-bigwig-file)
     * [Adding entries to a bigWig file](#adding-entries-to-a-bigwig-file)
     * [Close a bigWig file](#close-a-bigwig-file)
+  * [Numpy](#Numpy)
   * [A note on coordinates](#a-note-on-coordinates)
   * [Galaxy](#galaxy)
 
@@ -121,6 +122,9 @@ For the sake of consistency with other tools, pyBigWig adopts this same methodol
     0.22213841940688142
     >>> bw.stats('chr1', 89294, 91629, exact=True)
     [0.22213841940688142]
+Additionally, `values()` can directly output a numpy vector:
+
+    >>> bw = bw.open("
 
 ## Retrieve values for individual bases in a range
 
@@ -209,6 +213,36 @@ You're obviously then responsible for ensuring that you **do not** add entries o
 ## Close a bigWig file
 
 A file can be closed with a simple `bw.close()`, as is commonly done with other file types. For files opened for writing, closing a file writes any buffered entries to disk, constructs and writes the file index, and constructs zoom levels. Consequently, this can take a bit of time.
+
+# Numpy
+
+As of version 0.3.0, pyBigWig supports input of coordinates using numpy integers and vectors in some functions **if numpy was installed prior to installing pyBigWig**. To determine if pyBigWig was installed with numpy support by checking the `numpy` accessor:
+
+    >>> import pyBigWig
+    >>> pyBigWig.numpy
+    1
+
+If `pyBigWig.numpy` is `1`, then pyBigWig was compiled with numpy support. This means that `addEntries()` can accept numpy coordinates:
+
+    >>> import pyBigWig
+    >>> import numpy
+    >>> bw = pyBigWig.open("/tmp/delete.bw", "w")
+    >>> bw.addHeader([("1", 1000)], maxZooms=0)
+    >>> chroms = np.array(["1"] * 10)
+    >>> starts = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90], dtype=np.int64)
+    >>> ends = np.array([5, 15, 25, 35, 45, 55, 65, 75, 85, 95], dtype=np.int64)
+    >>> values0 = np.array(np.random.random_sample(10), dtype=np.float64)
+    >>> bw.addEntries(chroms, starts, ends=ends, values=values0)
+    >>> bw.close()
+
+Additionally, `values()` can directly output a numpy vector:
+
+    >>> bw = bw.open("/tmp/delete.bw")
+    >>> bw.values('1', 0, 10, numpy=True)
+    [ 0.74336642  0.74336642  0.74336642  0.74336642  0.74336642         nan
+         nan         nan         nan         nan]
+    >>> type(bw.values('1', 0, 10, numpy=True))
+    <type 'numpy.ndarray'>
 
 # A note on coordinates
 

@@ -16,7 +16,11 @@ static PyObject* pyBwOpen(PyObject *self, PyObject *pyFname);
 static PyObject* pyBwClose(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetChroms(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+#ifdef WITHNUMPY
+static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+#else
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
+#endif
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
@@ -135,6 +139,34 @@ by default. Other possibilites for 'type' are: 'min' (minimum value),\n\
 [0.10000000521540645]\n\
 >>> bw.stats(\"1\",99,200, type=\"max\", nBins=2)\n\
 [1.399999976158142, 1.5]\n"},
+#ifdef WITHNUMPY
+    {"values", (PyCFunction)pyBwGetValues, METH_VARARGS|METH_KEYWORDS,
+"Retrieve the value stored for each position (or None). On error, a runtime\n\
+exception is thrown.\n\
+\n\
+Positional arguments:\n\
+    chr:   Chromosome name\n\
+    start: Starting position\n\
+    end:   Ending position\n\
+\n\
+Optional arguments:\n\
+    numpy: If True, return a numpy array rather than a list of values. This\n\
+           is generally more memory efficient. Note that this option is only\n\
+           available if pyBigWig was installed with numpy support (check the\n\
+           pyBigWig.numpy() function).\n\
+\n\
+>>> import pyBigWig\n\
+>>> bw = pyBigWig.open(\"test/test.bw\")\n\
+>>> bw.values(\"1\", 0, 3)\n\
+[0.10000000149011612, 0.20000000298023224, 0.30000001192092896]\n\
+\n\
+The length of the returned list will always match the length of the\n\
+range. Any uncovered bases will have a value of None.\n\
+\n\
+>>> bw.values(\"1\", 0, 4)\n\
+[0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]\n\
+\n"},
+#else
     {"values", (PyCFunction)pyBwGetValues, METH_VARARGS,
 "Retrieve the value stored for each position (or None). On error, a runtime\n\
 exception is thrown.\n\
@@ -155,6 +187,7 @@ range. Any uncovered bases will have a value of None.\n\
 >>> bw.values(\"1\", 0, 4)\n\
 [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, None]\n\
 \n"},
+#endif
     {"intervals", (PyCFunction)pyBwGetIntervals, METH_VARARGS|METH_KEYWORDS,
 "Retrieve each interval covering a part of a chromosome/region. On error, a\n\
 runtime exception is thrown.\n\

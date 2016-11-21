@@ -4,6 +4,12 @@ from distutils import sysconfig
 import subprocess
 import glob
 import sys
+try:
+    from numpy.distutils.misc_util import get_info
+    from os.path import dirname
+    WITHNUMPY = True
+except:
+    WITHNUMPY = False
 
 srcs = [x for x in 
     glob.glob("libBigWig/*.c")]
@@ -32,19 +38,30 @@ for v in foo:
     if(v[0:2] == "-L") :
         additional_libs.append(v[2:])
 
+include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")]
+defines = []
+if WITHNUMPY is True:
+    defines.extend([('WITHNUMPY', None), ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')])
+    extra_info = get_info('npymath')
+    include_dirs.extend(extra_info['include_dirs'])
+    libs.extend(extra_info['libraries'])
+    extra_info['library_dirs'].extend(additional_libs)
+    additional_libs = extra_info['library_dirs']
+
 module1 = Extension('pyBigWig',
                     sources = srcs,
                     libraries = libs,
                     library_dirs = additional_libs, 
-                    include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")])
+                    define_macros = defines,
+                    include_dirs = include_dirs)
 
 setup(name = 'pyBigWig',
-       version = '0.2.8',
+       version = '0.3.0',
        description = 'A package for accessing bigWig files using libBigWig',
        author = "Devon P. Ryan",
        author_email = "ryan@ie-freiburg.mpg.de",
        url = "https://github.com/dpryan79/pyBigWig",
-       download_url = "https://github.com/dpryan79/pyBigWig/tarball/0.2.8",
+       download_url = "https://github.com/dpryan79/pyBigWig/tarball/0.3.0",
        keywords = ["bioinformatics", "bigWig"],
        classifier = ["Development Status :: 5 - Production/Stable",
                      "Intended Audience :: Developers",
@@ -62,5 +79,6 @@ setup(name = 'pyBigWig',
                      "Operating System :: Unix",
                      "Operating System :: MacOS"],
        packages = find_packages(),
-       include_package_data=True,
+       include_package_data = True,
+       extras_require = {'numpy input': ["numpy"]},
        ext_modules = [module1])
