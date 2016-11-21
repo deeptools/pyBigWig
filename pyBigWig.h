@@ -12,9 +12,11 @@ typedef struct {
     int lastType; //The type of the last written entry
 } pyBigWigFile_t;
 
-static PyObject* pyBwOpen(PyObject *self, PyObject *pyFname);
-static PyObject* pyBwClose(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyBwOpen(PyObject *self, PyObject *pyFname);
+static PyObject *pyBwClose(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetChroms(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyIsBigWig(pyBigWigFile_t *pybw, PyObject *args);
+static PyObject *pyIsBigBed(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetStats(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 #ifdef WITHNUMPY
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
@@ -22,6 +24,8 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args, PyObject *k
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
 #endif
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+static PyObject *pyBBGetEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+static PyObject *pyBBGetSQL(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBwAddEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
@@ -30,14 +34,14 @@ static void pyBwDealloc(pyBigWigFile_t *pybw);
 //The function types aren't actually correct...
 static PyMethodDef bwMethods[] = {
     {"open", (PyCFunction)pyBwOpen, METH_VARARGS,
-"Open a bigWig file. For remote files, give a URL starting with HTTP,\n\
+"Open a bigWig or bigBed file. For remote files, give a URL starting with HTTP,\n\
 FTP, or HTTPS.\n\
 \n\
 Optional arguments:\n\
     mode: An optional mode. The default is 'r', which opens a file for reading.\n\
           If you specify a mode containing 'w' then you'll instead open a file\n\
           for writing. Note that you then need to add an appropriate header\n\
-          before use.\n\
+          before use. For bigBed files, only reading is supported.\n\
 \n\
 Returns:\n\
    A bigWigFile object on success, otherwise None.\n\
@@ -64,13 +68,16 @@ These are returned as a dictionary.\n\
 {'maxVal': 2L, 'sumData': 272L, 'minVal': 0L, 'version': 4L,\n\
 'sumSquared': 500L, 'nLevels': 1L, 'nBasesCovered': 154L}\n\
 >>> bw.close()\n"},
-
     {"close", (PyCFunction)pyBwClose, METH_VARARGS,
 "Close a bigWig file.\n\
 \n\
 >>> import pyBigWig\n\
 >>> bw = pyBigWig.open(\"some_file.bw\")\n\
 >>> bw.close()\n"},
+    {"isBigWig", (PyCFunction)pyIsBigWig, METH_VARARGS,
+"Returns true if the object is a bigWig file (otherwise False).\n"},
+    {"isBigBed", (PyCFunction)pyIsBigBed, METH_VARARGS,
+"Returns true if the object is a bigBed file (otherwise False).\n"},
     {"chroms", (PyCFunction)pyBwGetChroms, METH_VARARGS,
 "Return a chromosome: length dictionary. The order is typically not\n\
 alphabetical and the lengths are long (thus the 'L' suffix).\n\
@@ -211,6 +218,23 @@ end of 10 specifies the first 10 positions).\n\
 ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224),\n\
  (2, 3, 0.30000001192092896))\n\
 >>> bw.close()"},
+    {"entries", (PyCFunction) pyBBGetEntries, METH_VARARGS|METH_KEYWORDS,
+"Retrieves entries from a bigBed file. These can optionally contain the string\n\
+associated with each entry.\n\
+\n\
+Positional arguments:\n\
+    chr:   Chromosome name\n\
+\n\
+Keyword arguments:\n\
+    start: Starting position\n\
+    end:   Ending position\n\
+    withString: If True, return the string associated with each entry.\n\
+           Default False.\n\
+\n"},
+    {"SQL", (PyCFunction) pyBBGetEntries, METH_VARARGS,
+"Returns the SQL string associated with the file. This is typically useful for\n\
+bigBed files, where this determines what is held in each column of the text\n\
+string associated with entries.\n"},
     {"addHeader", (PyCFunction)pyBwAddHeader, METH_VARARGS|METH_KEYWORDS,
 "Adds a header to a file opened for writing. This MUST be called before adding\n\
 any entries. On error, a runtime exception is thrown.\n\

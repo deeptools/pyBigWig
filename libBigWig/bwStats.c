@@ -74,41 +74,22 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
     }
     sz = 0; //This is now the size of the compressed buffer
 
-    if(bwSetPos(fp, o->offset[i])) {
-        fprintf(stderr, "[getVals] couldn't set position\n");
-        goto error;
-    }
+    if(bwSetPos(fp, o->offset[i])) goto error;
 
     vals = calloc(1,sizeof(struct vals_t));
-    if(!vals) {
-        fprintf(stderr, "[getVals] couldn't calloc vals\n");
-        goto error;
-    }
+    if(!vals) goto error;
 
     v = malloc(sizeof(struct val_t));
-    if(!v) {
-        fprintf(stderr, "[getVals] couldn't malloc v\n");
-        goto error;
-    }
+    if(!v) goto error;
 
     if(sz < o->size[i]) compBuf = malloc(o->size[i]);
-    if(!compBuf) {
-        fprintf(stderr, "[getVals] couldn't malloc combBuf\n");
-        goto error;
-    }
+    if(!compBuf) goto error;
 
-    if(bwRead(compBuf, o->size[i], 1, fp) != 1) {
-        fprintf(stderr, "[getVals] bwRead failed\n");
-        goto error;
-    }
-
+    if(bwRead(compBuf, o->size[i], 1, fp) != 1) goto error;
     if(compressed) {
         sz = fp->hdr->bufSize;
         rv = uncompress(buf, &sz, compBuf, o->size[i]);
-        if(rv != Z_OK) {
-            fprintf(stderr, "[getVals] uncompressed did not return Z_OK\n");
-            goto error;
-        }
+        if(rv != Z_OK) goto error;
     } else {
         buf = compBuf;
     }
@@ -128,16 +109,10 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
         if(tid == vtid) {
             if((start <= vstart && end > vstart) || (start < vend && start >= vstart)) {
                 vals->vals = realloc(vals->vals, sizeof(struct val_t*)*(vals->n+1));
-                if(!vals->vals) {
-                    fprintf(stderr, "[getVals] couldn't realloc vals->vals\n");
-                    goto error;
-                }
+                if(!vals->vals) goto error;
                 vals->vals[vals->n++] = v;
                 v = malloc(sizeof(struct val_t));
-                if(!v) {
-                    fprintf(stderr, "[getVals] couldn't malloc v again\n");
-                    goto error;
-                }
+                if(!v) goto error;
             }
             if(vstart > end) break;
         } else if(vtid > tid) {
@@ -186,7 +161,6 @@ static double blockMean(bigWigFile_t *fp, bwOverlapBlock_t *blocks, uint32_t tid
 error:
     if(v) free(v);
     errno = ENOMEM;
-    fprintf(stderr, "[blockMean] setting errno=ENOMEM due to getVals returning NULL\n");
     return strtod("NaN", NULL);
 }
 
@@ -406,25 +380,16 @@ double *bwStatsFromZoom(bigWigFile_t *fp, int32_t level, uint32_t tid, uint32_t 
 
     if(!fp->hdr->zoomHdrs->idx[level]) {
         fp->hdr->zoomHdrs->idx[level] = bwReadIndex(fp, fp->hdr->zoomHdrs->indexOffset[level]);
-        if(!fp->hdr->zoomHdrs->idx[level]) {
-            fprintf(stderr, "[bwStatsFromZoom] Null zoom level?\n");
-            return NULL;
-        }
+        if(!fp->hdr->zoomHdrs->idx[level]) return NULL;
     }
 
     output = malloc(sizeof(double)*nBins);
-    if(!output) {
-        fprintf(stderr, "[bwStatsFromZoom] couldn't malloc %"PRIu32"*sizeof(double)\n", nBins);
-        return NULL;
-    }
+    if(!output) return NULL;
 
     for(i=0, pos=start; i<nBins; i++) {
         end2 = start + ((double)(end-start)*(i+1))/((int) nBins);
         blocks = walkRTreeNodes(fp, fp->hdr->zoomHdrs->idx[level]->root, tid, pos, end2);
-        if(!blocks) {
-            fprintf(stderr, "[bwStatsFromZoom] walkRTreeNodes returned NULL\n");
-            goto error;
-        }
+        if(!blocks) goto error;
 
         switch(type) {
         case 0:
@@ -451,10 +416,7 @@ double *bwStatsFromZoom(bigWigFile_t *fp, int32_t level, uint32_t tid, uint32_t 
             goto error;
             break;
         }
-        if(errno) {
-            fprintf(stderr, "[bwStatsFromZoom] errno != 0\n");
-            goto error;
-        }
+        if(errno) goto error;
         destroyBWOverlapBlock(blocks);
         pos = end2;
     }
@@ -472,10 +434,7 @@ double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t 
     bwOverlappingIntervals_t *ints = NULL;
     double *output = malloc(sizeof(double)*nBins);
     uint32_t i, pos = start, end2;
-    if(!output) {
-        fprintf(stderr, "[bwStatsFromFull] couldn't malloc %"PRIu32"*sizeof(double)\n", nBins);
-        return NULL;
-    }
+    if(!output) return NULL;
 
     for(i=0; i<nBins; i++) {
         end2 = start + ((double)(end-start)*(i+1))/((int) nBins);
@@ -516,10 +475,7 @@ double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t 
 double *bwStats(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
     int32_t level = determineZoomLevel(fp, ((double)(end-start))/((int) nBins));
     uint32_t tid = bwGetTid(fp, chrom);
-    if(tid == (uint32_t) -1) {
-        fprintf(stderr, "[bwStats] tid == -1\n");
-        return NULL;
-    }
+    if(tid == (uint32_t) -1) return NULL;
 
     if(level == -1) return bwStatsFromFull(fp, chrom, start, end, nBins, type);
     return bwStatsFromZoom(fp, level, tid, start, end, nBins, type);

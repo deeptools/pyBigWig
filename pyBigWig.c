@@ -156,7 +156,11 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     if(!PyArg_ParseTuple(pyFname, "s|s", &fname, &mode)) goto error;
 
     //Open the local/remote file
-    bw = bwOpen(fname, NULL, mode);
+    if(bwIsBigWig(fname, NULL)) {
+        bw = bwOpen(fname, NULL, mode);
+    } else {
+        bw = bbOpen(fname, NULL);
+    }
     if(!bw) goto error;
     if(!mode || !strchr(mode, 'w')) {
         if(!bw->cl) goto error;
@@ -287,6 +291,11 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     int i, nBins = 1;
     errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
+    if(bw->type == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "bigBed files have no statistics!");
+        return NULL;
+    }
+
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksiO", kwd_list, &chrom, &startl, &endl, &type, &nBins, &exact)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome!");
         return NULL;
@@ -353,6 +362,12 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     char *chrom;
     PyObject *ret;
     bwOverlappingIntervals_t *o;
+
+    if(bw->type == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "bigBed files have no values! Use 'entries' instead.");
+        return NULL;
+    }
+
 #ifdef WITHNUMPY
     static char *kwd_list[] = {"chrom", "start", "end", "numpy", NULL};
     PyObject *outputNumpy = Py_False;
@@ -411,6 +426,11 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     bwOverlappingIntervals_t *intervals = NULL;
     char *chrom;
     PyObject *ret;
+
+    if(bw->type == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "bigBed files have no intervals! Use 'entries()' instead.");
+        return NULL;
+    }
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &startl, &endl)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome.\n");

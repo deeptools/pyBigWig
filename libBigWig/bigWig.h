@@ -11,7 +11,7 @@ extern "C" {
  *
  * \section Introduction
  *
- * libBigWig is a C library for parsing local/remote bigWig files. This is similar to Kent's library from UCSC, except 
+ * libBigWig is a C library for parsing local/remote bigWig and bigBed files. This is similar to Kent's library from UCSC, except 
  *  * The license is much more liberal
  *  * This code doesn't call `exit()` on error, thereby killing the calling application.
  *
@@ -29,6 +29,14 @@ extern "C" {
  *
  * There are three methods for storing values in a bigWig file, further described in the [wiggle format](http://genome.ucsc.edu/goldenpath/help/wiggle.html). The entries within the file are grouped into "blocks" and each such block is limited to storing entries of a single type. So, it is unwise to use a single bedGraph-like endtry followed by a single fixed-step entry followed by a variable-step entry, as that would require three separate blocks, with additional space required for each.
  *
+ * \section Testing file types
+ *
+ * As of version 0.3.0, libBigWig supports reading bigBed files. If an application needs to support both bigBed and bigWig input, then the `bwIsBigWig` and `bbIsBigBed` functions can be used to determine the file type. These both use the "magic" number at the beginning of the file to determine the file type.
+ *
+ * \section Interval and entry iterators
+ *
+ * As of version 0.3.0, libBigWig supports iterating over intervals in bigWig files and entries in bigBed files. The number of intervals/entries returned with each iteration can be controlled by setting the number of blocks processed in each iteration (intervals and entries are group inside of bigWig and bigBed files into blocks of entries). See `test/testIterator.c` for an example.
+ *
  * \section Examples
  * 
  * Please see [README.md](README.md) and the files under `test/` for examples.
@@ -45,12 +53,16 @@ extern "C" {
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.2.0
+#define LIBBIGWIG_VERSION 0.3.0
 
 /*!
  * The magic number of a bigWig file.
  */
 #define BIGWIG_MAGIC 0x888FFC26
+/*!
+ * The magic number of a bigBed file.
+ */
+#define BIGBED_MAGIC 0x8789F2EB
 /*!
  * The magic number of a "cirTree" block in a file.
  */
@@ -108,6 +120,8 @@ typedef struct {
     uint64_t ctOffset; /**<The offset to the on-disk chromosome tree list.*/
     uint64_t dataOffset; /**<The on-disk offset to the first block of data.*/
     uint64_t indexOffset; /**<The on-disk offset to the data index.*/
+    uint16_t fieldCount; /**<Total number of fields.*/
+    uint16_t definedFieldCount; /**<Number of fixed-format BED fields.*/
     uint64_t sqlOffset; /**<The on-disk offset to an SQL string. This is unused.*/
     uint64_t summaryOffset; /**<If there's a summary, this is the offset to it on the disk.*/
     uint32_t bufSize; /**<The compression buffer size (if the data is compressed).*/
@@ -182,6 +196,7 @@ typedef struct {
     bwRTree_t *idx; /**<The index for the full dataset.*/
     bwWriteBuffer_t *writeBuffer; /**<The buffer used for writing.*/
     int isWrite; /**<0: Opened for reading, 1: Opened for writing.*/
+    int type; /**<0: bigWig, 1: bigBed.*/
 } bigWigFile_t;
 
 /*!
@@ -194,6 +209,35 @@ typedef struct {
     uint32_t *end; /**<The end positions (0-based half open)*/
     float *value; /**<The value associated with each position*/
 } bwOverlappingIntervals_t;
+
+/*!
+ * @brief Holds interval:str associations
+ */
+typedef struct {
+    uint32_t l; /**<Number of intervals held*/
+    uint32_t m; /**<Maximum number of values/intervals the struct can hold*/
+    uint32_t *start; /**<The start positions (0-based half open)*/
+    uint32_t *end; /**<The end positions (0-based half open)*/
+    char **str; /**<The strings associated with a given entry.*/
+} bbOverlappingEntries_t;
+
+/*!
+ * @brief A structure to hold iterations
+ * One of intervals and entries should be used to access records from bigWig or bigBed files, respectively.
+ */
+typedef struct {
+    bigWigFile_t *bw; /**<Pointer to the bigWig/bigBed file.*/
+    uint32_t tid; /**<The contig/chromosome ID.*/
+    uint32_t start; /**<Start position of the query interval.*/
+    uint32_t end; /**<End position of the query interval.*/
+    uint64_t offset; /**<Offset into the blocks.*/
+    uint32_t blocksPerIteration; /**<Number of blocks to use per iteration.*/
+    int withString; /**<For bigBed entries, whether to return the string with the entries.*/
+    void *blocks; /**<Overlapping blocks.*/
+    bwOverlappingIntervals_t *intervals; /**<Overlapping intervals (or NULL).*/
+    bbOverlappingEntries_t *entries; /**<Overlapping entries (or NULL).*/
+    void *data; /**<Points to either intervals or entries. If there are no further intervals/entries, then this is NULL. Use this to test for whether to continue iterating.*/
+} bwOverlapIterator_t;
 
 /*!
  * @brief Initializes curl and global variables. This *MUST* be called before other functions (at least if you want to connect to remote files).
@@ -211,8 +255,26 @@ int bwInit(size_t bufSize);
 void bwCleanup(void);
 
 /*!
+ * @brief Determine if a file is a bigWig file.
+ * This function will quickly check either local or remote files to determine if they appear to be valid bigWig files. This can be determined by reading the first 4 bytes of the file.
+ * @param fname The file name or URL (http, https, and ftp are supported)
+ * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information. See `test/testRemote` for an example.
+ * @return 1 if the file appears to be bigWig, otherwise 0.
+ */
+int bwIsBigWig(char *fname, CURLcode (*callBack)(CURL*));
+
+/*!
+ * @brief Determine is a file is a bigBed file.
+ * This function will quickly check either local or remote files to determine if they appear to be valid bigWig files. This can be determined by reading the first 4 bytes of the file.
+ * @param fname The file name or URL (http, https, and ftp are supported)
+ * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information. See `test/testRemote` for an example.
+ * @return 1 if the file appears to be bigWig, otherwise 0.
+ */
+int bbIsBigBed(char *fname, CURLcode (*callBack)(CURL*));
+
+/*!
  * @brief Opens a local or remote bigWig file.
- * This will open a local or remote bigWig file.
+ * This will open a local or remote bigWig file. Writing of local bigWig files is also supported.
  * @param fname The file name or URL (http, https, and ftp are supported)
  * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information. See `test/testRemote` for an example.
  * @param mode The mode, by default "r". Both local and remote files can be read, but only local files can be written. For files being written the callback function is ignored. If and only if the mode contains "w" will the file be opened for writing (in all other cases the file will be opened for reading.
@@ -221,7 +283,27 @@ void bwCleanup(void);
 bigWigFile_t *bwOpen(char *fname, CURLcode (*callBack)(CURL*), const char* mode);
 
 /*!
+ * @brief Opens a local or remote bigBed file.
+ * This will open a local or remote bigBed file. Note that this file format can only be read and NOT written!
+ * @param fname The file name or URL (http, https, and ftp are supported)
+ * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information. See `test/testRemote` for an example.
+ * @return A bigWigFile_t * on success and NULL on error.
+ */
+bigWigFile_t *bbOpen(char *fname, CURLcode (*callBack)(CURL*));
+
+/*!
+ * @brief Returns a string containing the SQL entry (or NULL).
+ * The "auto SQL" field contains the names and value types of the entries in
+ * each bigBed entry. If you need to parse a particular value out of each entry,
+ * then you'll need to first parse this.
+ * @param fp The file pointer to a valid bigWigFile_t
+ * @return A char *, which you MUST free!
+ */
+char *bbGetSQL(bigWigFile_t *fp);
+
+/*!
  * @brief Closes a bigWigFile_t and frees up allocated memory
+ * This closes both bigWig and bigBed files.
  * @param fp The file pointer.
  */
 void bwClose(bigWigFile_t *fp);
@@ -237,7 +319,7 @@ void bwClose(bigWigFile_t *fp);
  *
  * @param fp A valid bigWigFile_t pointer
  * @param chrom A chromosome name
- * @return An ID, -1 will be returned on error (note that this is an unsigned value, so that's ~4 billion. BigWig files can't store that many chromosomes anyway.
+ * @return An ID, -1 will be returned on error (note that this is an unsigned value, so that's ~4 billion. bigWig/bigBed files can't store that many chromosomes anyway.
  */
 uint32_t bwGetTid(bigWigFile_t *fp, char *chrom);
 
@@ -249,9 +331,16 @@ uint32_t bwGetTid(bigWigFile_t *fp, char *chrom);
 void bwDestroyOverlappingIntervals(bwOverlappingIntervals_t *o);
 
 /*!
- * @brief Return entries overlapping an interval.
- * Find all entries overlapping a range and returns them, including their associated values.
- * @param fp A valid bigWigFile_t pointer.
+ * @brief Frees space allocated by `bbGetOverlappingEntries`
+ * @param o A valid `bbOverlappingEntries_t` pointer.
+ * @see bbGetOverlappingEntries
+ */
+void bbDestroyOverlappingEntries(bbOverlappingEntries_t *o);
+
+/*!
+ * @brief Return bigWig entries overlapping an interval.
+ * Find all bigWig entries overlapping a range and returns them, including their associated values.
+ * @param fp A valid bigWigFile_t pointer. This MUST be for a bigWig file!
  * @param chrom A valid chromosome name.
  * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
  * @param end The end position of the interval. Again, this is 0-based half open, so 100 will include the 100th base...which is at position 99.
@@ -263,8 +352,71 @@ void bwDestroyOverlappingIntervals(bwOverlappingIntervals_t *o);
 bwOverlappingIntervals_t *bwGetOverlappingIntervals(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end);
 
 /*!
- * @brief Return all per-base values in a given interval.
- * Given an interval (e.g., chr1:0-100), return the value at each position. Positions without associated values are suppressed by default, but may be returned if `includeNA` is not 0.
+ * @brief Return bigBed entries overlapping an interval.
+ * Find all bigBed entries overlapping a range and returns them.
+ * @param fp A valid bigWigFile_t pointer. This MUST be for a bigBed file!
+ * @param chrom A valid chromosome name.
+ * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
+ * @param end The end position of the interval. Again, this is 0-based half open, so 100 will include the 100th base...which is at position 99.
+ * @param withString If not 0, return the string associated with each entry in the output. If 0, there are no associated strings returned. This is useful if the only information needed are the locations of the entries, which require significantly less memory.
+ * @return NULL on error or no overlapping values, otherwise a `bbOverlappingEntries_t *` holding the intervals and (optionally) the associated string.
+ * @see bbOverlappingEntries_t
+ * @see bbDestroyOverlappingEntries
+ */
+bbOverlappingEntries_t *bbGetOverlappingEntries(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, int withString);
+
+/*!
+ * @brief Creates an iterator over intervals in a bigWig file
+ * Iterators can be traversed with `bwIteratorNext()` and destroyed with `bwIteratorDestroy()`.
+ * Intervals are in the `intervals` member and `data` can be used to determine when to end iteration.
+ * @param fp A valid bigWigFile_t pointer. This MUST be for a bigWig file!
+ * @param chrom A valid chromosome name.
+ * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
+ * @param end The end position of the interval. Again, this is 0-based half open, so 100 will include the 100th base...which is at position 99.
+ * @param blocksPerIteration The number of blocks (internal groupings of intervals in bigWig files) to return per iteration.
+ * @return NULL on error, otherwise a bwOverlapIterator_t pointer
+ * @see bwOverlapIterator_t
+ * @see bwIteratorNext
+ * @see bwIteratorDestroy
+ */ 
+bwOverlapIterator_t *bwOverlappingIntervalsIterator(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t blocksPerIteration);
+
+/*!
+ * @brief Creates an iterator over entries in a bigBed file
+ * Iterators can be traversed with `bwIteratorNext()` and destroyed with `bwIteratorDestroy()`.
+ * Entries are in the `entries` member and `data` can be used to determine when to end iteration.
+ * @param fp A valid bigWigFile_t pointer. This MUST be for a bigBed file!
+ * @param chrom A valid chromosome name.
+ * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
+ * @param end The end position of the interval. Again, this is 0-based half open, so 100 will include the 100th base...which is at position 99.
+ * @param withString Whether the returned entries should include their associated strings.
+ * @param blocksPerIteration The number of blocks (internal groupings of entries in bigBed files) to return per iteration.
+ * @return NULL on error, otherwise a bwOverlapIterator_t pointer
+ * @see bbGetOverlappingEntries
+ * @see bwOverlapIterator_t
+ * @see bwIteratorNext
+ * @see bwIteratorDestroy
+ */ 
+bwOverlapIterator_t *bbOverlappingEntriesIterator(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, int withString, uint32_t blocksPerIteration);
+
+/*!
+ * @brief Traverses to the entries/intervals in the next group of blocks.
+ * @param iter A bwOverlapIterator_t pointer that is updated (or destroyed on error)
+ * @return NULL on error, otherwise a bwOverlapIterator_t pointer with the intervals or entries from the next set of blocks.
+ * @see bwOverlapIterator_t
+ * @see bwIteratorDestroy
+ */ 
+bwOverlapIterator_t *bwIteratorNext(bwOverlapIterator_t *iter);
+
+/*!
+ * @brief Destroys a bwOverlapIterator_t
+ * @param iter The bwOverlapIterator_t that should be destroyed
+ */
+void bwIteratorDestroy(bwOverlapIterator_t *iter);
+
+/*!
+ * @brief Return all per-base bigWig values in a given interval.
+ * Given an interval (e.g., chr1:0-100), return the value at each position in a bigWig file. Positions without associated values are suppressed by default, but may be returned if `includeNA` is not 0.
  * @param fp A valid bigWigFile_t pointer.
  * @param chrom A valid chromosome name.
  * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
@@ -278,8 +430,8 @@ bwOverlappingIntervals_t *bwGetOverlappingIntervals(bigWigFile_t *fp, char *chro
 bwOverlappingIntervals_t *bwGetValues(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, int includeNA);
 
 /*!
- * @brief Determines per-interval statistics
- * Can determine mean/min/max/coverage/standard deviation of values in one or more intervals. You can optionally give it an interval and ask for values from X number of sub-intervals.
+ * @brief Determines per-interval bigWig statistics
+ * Can determine mean/min/max/coverage/standard deviation of values in one or more intervals in a bigWig file. You can optionally give it an interval and ask for values from X number of sub-intervals.
  * @param fp The file from which to extract statistics.
  * @param chrom A valid chromosome name.
  * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
@@ -292,8 +444,8 @@ bwOverlappingIntervals_t *bwGetValues(bigWigFile_t *fp, char *chrom, uint32_t st
 double *bwStats(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type);
 
 /*!
- * @brief Determines per-interval statistics
- * Can determine mean/min/max/coverage/standard deviation of values in one or more intervals. You can optionally give it an interval and ask for values from X number of sub-intervals. The difference with bwStats is that zoom levels are never used.
+ * @brief Determines per-interval bigWig statistics
+ * Can determine mean/min/max/coverage/standard deviation of values in one or more intervals in a bigWig file. You can optionally give it an interval and ask for values from X number of sub-intervals. The difference with bwStats is that zoom levels are never used.
  * @param fp The file from which to extract statistics.
  * @param chrom A valid chromosome name.
  * @param start The start position of the interval. This is 0-based half open, so 0 is the first base.
