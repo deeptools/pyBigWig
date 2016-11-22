@@ -1,6 +1,7 @@
 import pyBigWig
 import tempfile
 import os
+import sys
 import hashlib
 
 class TestRemote():
@@ -168,7 +169,10 @@ class TestBigBed():
     uint score2;       "Additional measurement/count e.g. number of reads. Set to 0 for no data."
     )
 """
-        assert(bb.SQL() == SQL)
+        output = bb.SQL()
+        if isinstance(output, bytes):
+            output = output.decode('ASCII')
+        assert(output == SQL)
         o = bb.entries('chr1',10000000,10020000)
         expected = [(10009333, 10009640, '61035\t130\t-\t0.026\t0.42\t404'), (10014007, 10014289, '61047\t136\t-\t0.029\t0.42\t404'), (10014373, 10024307, '61048\t630\t-\t5.420\t0.00\t2672399')]
         assert(o == expected)
