@@ -1,13 +1,13 @@
 import pyBigWig
 import tempfile
 import os
+import sys
 import hashlib
 
 class TestRemote():
     fname = "https://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
 
     def doOpen(self):
-        print(self.fname)
         bw = pyBigWig.open(self.fname)
         assert(bw is not None)
         return bw
@@ -148,6 +148,36 @@ class TestLocal():
         blah.fname = os.path.dirname(pyBigWig.__file__) + "/pyBigWigTest/test.bw"
         blah.testAll()
 
+class TestBigBed():
+    def testBigBed(self):
+        fname = "https://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed"
+        bb = pyBigWig.open(fname)
+        assert(bb is not None)
+        assert(bb.isBigWig() == 0)
+        assert(bb.isBigBed() == 1)
+        SQL = """table RnaElements 
+"BED6 + 3 scores for RNA Elements data "
+    (
+    string chrom;      "Reference sequence chromosome or scaffold"
+    uint   chromStart; "Start position in chromosome"
+    uint   chromEnd;   "End position in chromosome"
+    string name;       "Name of item"
+    uint   score;      "Normalized score from 0-1000"
+    char[1] strand;    "+ or - or . for unknown"
+    float level;       "Expression level such as RPKM or FPKM. Set to -1 for no data."
+    float signif;      "Statistical significance such as IDR. Set to -1 for no data."
+    uint score2;       "Additional measurement/count e.g. number of reads. Set to 0 for no data."
+    )
+"""
+        output = bb.SQL()
+        if isinstance(output, bytes):
+            output = output.decode('ASCII')
+        assert(output == SQL)
+        o = bb.entries('chr1',10000000,10020000)
+        expected = [(10009333, 10009640, '61035\t130\t-\t0.026\t0.42\t404'), (10014007, 10014289, '61047\t136\t-\t0.029\t0.42\t404'), (10014373, 10024307, '61048\t630\t-\t5.420\t0.00\t2672399')]
+        assert(o == expected)
+        bb.close()
+
 class TestNumpy():
     def testNumpy(self):
         try:
@@ -190,6 +220,7 @@ class TestNumpy():
         bw.close()
 
         bw = pyBigWig.open("/tmp/delete.bw")
+        assert(bw is not None)
 
         def compy(start, v2):
             v = []
