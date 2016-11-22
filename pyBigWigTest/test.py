@@ -7,7 +7,6 @@ class TestRemote():
     fname = "https://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
 
     def doOpen(self):
-        print(self.fname)
         bw = pyBigWig.open(self.fname)
         assert(bw is not None)
         return bw
@@ -217,6 +216,7 @@ class TestNumpy():
         bw.close()
 
         bw = pyBigWig.open("/tmp/delete.bw")
+        assert(bw is not None)
 
         def compy(start, v2):
             v = []

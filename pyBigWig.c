@@ -156,7 +156,7 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     if(!PyArg_ParseTuple(pyFname, "s|s", &fname, &mode)) goto error;
 
     //Open the local/remote file
-    if(bwIsBigWig(fname, NULL)) {
+    if(strchr(mode, 'w') != NULL || bwIsBigWig(fname, NULL)) {
         bw = bwOpen(fname, NULL, mode);
     } else {
         bw = bbOpen(fname, NULL);
@@ -403,6 +403,8 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     if(outputNumpy == Py_True) {
         npy_intp len = end - start;
         ret = PyArray_SimpleNewFromData(1, &len, NPY_FLOAT, (void *) o->value);
+        //This will break if numpy ever stops using malloc!
+        PyArray_ENABLEFLAGS(ret, NPY_ARRAY_OWNDATA);
         free(o->start);
         free(o->end);
         free(o);
@@ -617,6 +619,9 @@ PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
         PyErr_SetString(PyExc_RuntimeError, "Received an error while writing the bigWig header");
         goto error;
     }
+
+    if(lengths) free(lengths);
+    if(chroms) free(chroms);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -1509,6 +1514,7 @@ static PyObject *pyBBGetSQL(pyBigWigFile_t *self, PyObject *args) {
 #else
     o = PyString_FromStringAndSize(str, len);
 #endif
+    if(str) free(str);
 
     return o;
 }
