@@ -5,7 +5,7 @@ import sys
 import hashlib
 
 class TestRemote():
-    fname = "https://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
+    fname = "http://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
 
     def doOpen(self):
         bw = pyBigWig.open(self.fname)
@@ -150,7 +150,7 @@ class TestLocal():
 
 class TestBigBed():
     def testBigBed(self):
-        fname = "https://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed"
+        fname = "http://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed"
         bb = pyBigWig.open(fname)
         assert(bb is not None)
         assert(bb.isBigWig() == 0)
