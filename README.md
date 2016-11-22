@@ -10,12 +10,14 @@ Table of Contents
   * [Usage](#usage)
     * [Load the extension](#load-the-extension)
     * [Open a bigWig file](#open-a-bigwig-file)
+    * [Determining the file type](#determining-the-file-type)
     * [Access the list of chromosomes and their lengths](#access-the-list-of-chromosomes-and-their-lengths)
     * [Print the header](#print-the-header)
     * [Compute summary information on a range](#compute-summary-information-on-a-range)
       * [A note on statistics and zoom levels](#a-note-on-statistics-and-zoom-levels)
     * [Retrieve values for individual bases in a range](#retrieve-values-for-individual-bases-in-a-range)
     * [Retrieve all intervals in a range](#retrieve-all-intervals-in-a-range)
+    * [Retrieving bigBed entries](#retrieving-bigbed-entries)
     * [Add a header to a bigWig file](#add-a-header-to-a-bigwig-file)
     * [Adding entries to a bigWig file](#adding-entries-to-a-bigwig-file)
     * [Close a bigWig file](#close-a-bigwig-file)
@@ -41,7 +43,7 @@ Basic usage is as follows:
 
     >>> import pyBigWig
 
-## Open a bigWig file
+## Open a bigWig or bigBed file
 
 This will work if your working directory is the pyBigWig source code directory.
 
@@ -52,6 +54,22 @@ Note that if the file doesn't exist you'll see an error message and `None` will 
     >>> bw = pyBigWig.open("test/output.bw", "w")
 
 Note that a file opened for writing can't be queried for its intervals or statistics, it can *only* be written to. If you open a file for writing then you will next need to add a header (see the section on this below).
+
+Local and remote bigBed read access is also supported:
+
+    >>> bb = pyBigWig.open("https://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed")
+
+While you can specify a mode for bigBed files, it is ignored. The object returned by `pyBigWig.open()` is the same regardless of whether you're opening a bigWig or bigBed file.
+
+## Determining the file type
+
+Since bigWig and bigBed files can both be opened, it may be necessary to determine whether a given `bigWigFile` object points to a bigWig or bigBed file. To that end, one can use the `isBigWig()` and `isBigBed()` functions:
+
+    >>> bw = pyBigWig.open("test/test.bw")
+    >>> bw.isBigWig()
+    True
+    >>> bw.isBigBed()
+    False
 
 ## Access the list of chromosomes and their lengths
 
@@ -77,9 +95,11 @@ It's sometimes useful to print a bigWig's header. This is presented here as a py
     >>> bw.header()
     {'maxVal': 2L, 'sumData': 272L, 'minVal': 0L, 'version': 4L, 'sumSquared': 500L, 'nLevels': 1L, 'nBasesCovered': 154L}
 
+Note that this is also possible for bigBed files and the same dictionary keys will be present. Entries such as `maxVal`, `sumData`, `minVal`, and `sumSquared` are then largely not meaningful.
+
 ## Compute summary information on a range
 
-BigWig files are used to store values associated with positions and ranges of them. Typically we want to quickly access the average value over a range, which is very simple:
+bigWig files are used to store values associated with positions and ranges of them. Typically we want to quickly access the average value over a range, which is very simple:
 
     >>> bw.stats("1", 0, 3)
     [0.2000000054637591]
@@ -152,6 +172,38 @@ If the start and end position are omitted then all intervals on the chromosome s
     >>> bw.intervals("1")
     ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896), (100, 150, 1.399999976158142), (150, 151, 1.5))
 
+## Retrieving bigBed entries
+
+As opposed to bigWig files, bigBed files hold entries, which are intervals with an associated string. You can access these entries using the `entries()` function:
+
+    >>> bb = pyBigWig.open("https://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed")
+    >>> bb.entries('chr1', 10000000, 10020000)
+    [(10009333, 10009640, '61035\t130\t-\t0.026\t0.42\t404'), (10014007, 10014289, '61047\t136\t-\t0.029\t0.42\t404'), (10014373, 10024307, '61048\t630\t-\t5.420\t0.00\t2672399')]
+
+The output is a list of entry tuples. The tuple elements are the `start` and `end` position of each entry, followed by its associated `string`. The string is returned exactly as it's held in the bigBed file, so parsing it is left to you. To determine what the various fields are in these string, consult the SQL string:
+
+    >>> bb.SQL()
+    table RnaElements
+    "BED6 + 3 scores for RNA Elements data"
+        (
+        string chrom;      "Reference sequence chromosome or scaffold"
+        uint   chromStart; "Start position in chromosome"
+        uint   chromEnd;   "End position in chromosome"
+        string name;       "Name of item"
+        uint   score;      "Normalized score from 0-1000"
+        char[1] strand;    "+ or - or . for unknown"
+        float level;       "Expression level such as RPKM or FPKM. Set to -1 for no data."
+        float signif;      "Statistical significance such as IDR. Set to -1 for no data."
+        uint score2;       "Additional measurement/count e.g. number of reads. Set to 0 for no data."
+        )
+
+Note that the first three entries in the SQL string are not part of the string.
+
+If you only need to know where entries are and not their associated values, you can save memory by additionally specifying `withString=False` in `entries()`:
+
+    >>> bb.entries('chr1', 10000000, 10020000, withString=False)
+    [(10009333, 10009640), (10014007, 10014289), (10014373, 10024307)]
+
 ## Add a header to a bigWig file
 
 If you've opened a file for writing then you'll need to give it a header before you can add any entries. The header contains all of the chromosomes, **in order**, and their sizes. If your chromosome has two chromosomes, chr1 and chr2, of lengths 1 and 1.5 million bases, then the following would add an appropriate header:
@@ -210,7 +262,7 @@ Note that pyBigWig will try to prevent you from adding entries in an incorrect o
 
 You're obviously then responsible for ensuring that you **do not** add entries out of order. The resulting files would otherwise largley not be usable.
 
-## Close a bigWig file
+## Close a bigWig or bigBed file
 
 A file can be closed with a simple `bw.close()`, as is commonly done with other file types. For files opened for writing, closing a file writes any buffered entries to disk, constructs and writes the file index, and constructs zoom levels. Consequently, this can take a bit of time.
 
@@ -246,8 +298,8 @@ Additionally, `values()` can directly output a numpy vector:
 
 # A note on coordinates
 
-Wiggle and BigWig files use 0-based half-open coordinates, which are also used by this extension. So to access the value for the first base on `chr1`, one would specify the starting position as `0` and the end position as `1`. Similarly, bases 100 to 115 would have a start of `99` and an end of `115`. This is simply for the sake of consistency with the underlying bigWig file and may change in the future.
+Wiggle, bigWig, and bigBed files use 0-based half-open coordinates, which are also used by this extension. So to access the value for the first base on `chr1`, one would specify the starting position as `0` and the end position as `1`. Similarly, bases 100 to 115 would have a start of `99` and an end of `115`. This is simply for the sake of consistency with the underlying bigWig file and may change in the future.
 
 # Galaxy
 
-pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). You can find it in the toolshed as `package_python_2_7_pybigwig_0_1_9`. The [IUC](https://wiki.galaxyproject.org/IUC) is currently hosting the XML definition of this on [github](https://github.com/galaxyproject/tools-iuc/tree/master/packages/package_python_2_7_10_pybigwig_0_2_5).
+pyBigWig is also available as a package in [Galaxy](http://www.usegalaxy.org). You can find it in the toolshed and the [IUC](https://wiki.galaxyproject.org/IUC) is currently hosting the XML definition of this on [github](https://github.com/galaxyproject/tools-iuc/tree/master/packages/package_python_2_7_10_pybigwig_0_2_8).

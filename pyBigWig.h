@@ -24,7 +24,7 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args, PyObject *k
 static PyObject *pyBwGetValues(pyBigWigFile_t *pybw, PyObject *args);
 #endif
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
-static PyObject *pyBBGetEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
+	static PyObject *pyBBGetEntries(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
 static PyObject *pyBBGetSQL(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetHeader(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwAddHeader(pyBigWigFile_t *pybw, PyObject *args, PyObject *kwds);
@@ -75,9 +75,21 @@ These are returned as a dictionary.\n\
 >>> bw = pyBigWig.open(\"some_file.bw\")\n\
 >>> bw.close()\n"},
     {"isBigWig", (PyCFunction)pyIsBigWig, METH_VARARGS,
-"Returns true if the object is a bigWig file (otherwise False).\n"},
+"Returns True if the object is a bigWig file (otherwise False).\n\
+>>> import pyBigWig\n\
+>>> bw = pyBigWig.open(\"some_file.bigWig\")\n\
+>>> bw.isBigWig()\n\
+True\n\
+>>> bw.isBigBed()\n\
+False\n"},
     {"isBigBed", (PyCFunction)pyIsBigBed, METH_VARARGS,
-"Returns true if the object is a bigBed file (otherwise False).\n"},
+"Returns true if the object is a bigBed file (otherwise False).\n\
+>>> import pyBigWig\n\
+>>> bw = pyBigWig.open(\"some_file.bigBed\")\n\
+>>> bw.isBigWig()\n\
+False\n\
+>>> bw.isBigBed()\n\
+True\n"},
     {"chroms", (PyCFunction)pyBwGetChroms, METH_VARARGS,
 "Return a chromosome: length dictionary. The order is typically not\n\
 alphabetical and the lengths are long (thus the 'L' suffix).\n\
@@ -229,12 +241,46 @@ Keyword arguments:\n\
     start: Starting position\n\
     end:   Ending position\n\
     withString: If True, return the string associated with each entry.\n\
-           Default False.\n\
+           Default True.\n\
+\n\
+The output is a list of tuples, with members \"start\", \"end\", and \"string\"\n\
+(assuming \"withString=True\"). If there are no overlapping entries, then None\n\
+is returned.\n\
+\n\
+>>> import pyBigWig\n\
+>>> bb = pyBigWig.open(\"https://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed\")\n\
+>>> print(bw.entries('chr1',10000000,10020000))\n\
+[(10009333, 10009640, '61035\t130\t-\t0.026\t0.42\t404'),\n\
+(10014007, 10014289, '61047\t136\t-\t0.029\t0.42\t404'),\n\
+(10014373, 10024307, '61048\t630\t-\t5.420\t0.00\t2672399')]\n\
+>>> print(bb.entries(\"chr1\", 10000000, 10000500, withString=False))\n\
+[(10009333, 10009640), (10014007, 10014289), (10014373, 10024307)]\n\
 \n"},
-    {"SQL", (PyCFunction) pyBBGetEntries, METH_VARARGS,
+    {"SQL", (PyCFunction) pyBBGetSQL, METH_VARARGS,
 "Returns the SQL string associated with the file. This is typically useful for\n\
 bigBed files, where this determines what is held in each column of the text\n\
-string associated with entries.\n"},
+string associated with entries.\n\
+\n\
+If there is no SQL string, then None is returned.\n\
+\n\
+>>> import pyBigWig\n\
+>>> bb = pyBigWig.open(\"https://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed\")\n\
+>>> print(bb.SQL())\n\
+table RnaElements\n\
+\"BED6 + 3 scores for RNA Elements data \"\n\
+    (\n\
+    string chrom;      \"Reference sequence chromosome or scaffold\"\n\
+    uint   chromStart; \"Start position in chromosome\"\n\
+    uint   chromEnd;   \"End position in chromosome\"\n\
+    string name;       \"Name of item\"\n\
+    uint   score;      \"Normalized score from 0-1000\"\n\
+    char[1] strand;    \"+ or - or . for unknown\"\n\
+    float level;       \"Expression level such as RPKM or FPKM. Set to -1 for no data.\"\n\
+    float signif;      \"Statistical significance such as IDR. Set to -1 for no data.\"\n\
+    uint score2;       \"Additional measurement/count e.g. number of reads. Set to 0 for no data.\"\n\
+    )\n\
+\n\
+\n"},
     {"addHeader", (PyCFunction)pyBwAddHeader, METH_VARARGS|METH_KEYWORDS,
 "Adds a header to a file opened for writing. This MUST be called before adding\n\
 any entries. On error, a runtime exception is thrown.\n\

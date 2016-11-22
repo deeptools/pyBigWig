@@ -1416,6 +1416,131 @@ error:
     return NULL;
 }
 
+/**************************************************************
+*
+* BigBed functions, added in 0.3.0
+*
+**************************************************************/
+
+static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+    bigWigFile_t *bw = self->bw;
+    int i;
+    uint32_t start, end = -1, tid;
+    unsigned long startl, endl;
+    char *chrom;
+    static char *kwd_list[] = {"chrom", "start", "end", "withString", NULL};
+    PyObject *ret, *t;
+    PyObject *withStringPy = Py_True;
+    int withString = 1;
+    bbOverlappingEntries_t *o;
+
+    if(bw->type == 0) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig files have no entries! Use 'intervals' or 'values' instead.");
+        return NULL;  
+    }
+
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "skk|O", kwd_list, &chrom, &startl, &endl, &withStringPy)) {
+        PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
+        return NULL;
+    }
+
+    tid = bwGetTid(bw, chrom);
+    if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
+    if(tid == (uint32_t) -1 || startl > end || endl > end) {
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
+    }
+    start = (uint32_t) startl;
+    end = (uint32_t) endl;
+    if(end <= start || end > bw->cl->len[tid] || start >= end) {
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
+        return NULL;
+    }
+
+    if(withStringPy == Py_False) withString = 0;
+
+    o = bbGetOverlappingEntries(bw, chrom, start, end, withString);
+    if(!o) {
+        PyErr_SetString(PyExc_RuntimeError, "An error occurred while fetching the overlapping entries!\n");
+        return NULL;
+    }
+    if(!o->l) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    ret = PyList_New(o->l);
+    if(!ret) goto error;
+
+    for(i=0; i<o->l; i++) {
+        if(withString) {
+            t = Py_BuildValue("(iis)", o->start[i], o->end[i], o->str[i]);
+        } else {
+            t = Py_BuildValue("(ii)", o->start[i], o->end[i]);
+        }
+        if(!t) goto error;
+        PyList_SetItem(ret, i, t);
+    }
+
+    bbDestroyOverlappingEntries(o);
+    return ret;
+
+error:
+    Py_DECREF(ret);
+    bbDestroyOverlappingEntries(o);
+    PyErr_SetString(PyExc_RuntimeError, "An error occurred while constructing the output list and tuple!");
+    return NULL;
+}
+
+static PyObject *pyBBGetSQL(pyBigWigFile_t *self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
+    char *str = bbGetSQL(bw);
+    size_t len = 0;
+    PyObject *o = NULL;
+
+    if(!str) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+    len = strlen(str);
+
+#if PY_MAJOR_VERSION >= 3
+    o = PyBytes_FromStringAndSize(str, len);
+#else
+    o = PyString_FromStringAndSize(str, len);
+#endif
+
+    return o;
+}
+
+static PyObject *pyIsBigWig(pyBigWigFile_t *self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
+    if(bw->type == 0) {
+        Py_INCREF(Py_True);
+        return Py_True;
+    }
+
+    Py_INCREF(Py_False);
+    return Py_False;
+}
+
+static PyObject *pyIsBigBed(pyBigWigFile_t *self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
+    if(bw->type == 1) {
+        Py_INCREF(Py_True);
+        return Py_True;
+    }
+
+    Py_INCREF(Py_False);
+    return Py_False;
+}
+
+/**************************************************************
+*
+* End of bigBed functions
+*
+**************************************************************/
+
 #if PY_MAJOR_VERSION >= 3
 PyMODINIT_FUNC PyInit_pyBigWig(void) {
     PyObject *res;
