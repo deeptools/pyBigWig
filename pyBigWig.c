@@ -3,7 +3,7 @@
 #include "pyBigWig.h"
 
 #ifdef WITHNUMPY
-#include <values.h>
+#include <float.h>
 #include "numpy/npy_common.h"
 #include "numpy/halffloat.h"
 #include "numpy/ndarrayobject.h"
@@ -404,7 +404,7 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
         npy_intp len = end - start;
         ret = PyArray_SimpleNewFromData(1, &len, NPY_FLOAT, (void *) o->value);
         //This will break if numpy ever stops using malloc!
-        PyArray_ENABLEFLAGS(ret, NPY_ARRAY_OWNDATA);
+        PyArray_ENABLEFLAGS((PyArrayObject*) ret, NPY_ARRAY_OWNDATA);
         free(o->start);
         free(o->end);
         free(o);
@@ -1429,7 +1429,7 @@ error:
 
 static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
-    int i;
+    uint32_t i;
     uint32_t start, end = -1, tid;
     unsigned long startl, endl;
     char *chrom;
