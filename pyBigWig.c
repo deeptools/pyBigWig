@@ -1298,10 +1298,10 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
             if(PyErr_Occurred()) return 0;
 #ifdef WITHNUMPY
             if(PyArray_Check(ends)) {
-                uend = Numeric2Uint(PyList_GetItem(ends, i));
+                uend = getNumpyU32((PyArrayObject*) ends, i);
             } else {
 #endif
-                uend = getNumpyU32((PyArrayObject*) ends, i);
+                uend = Numeric2Uint(PyList_GetItem(ends, i));
 #ifdef WITHNUMPY
             }
 #endif
