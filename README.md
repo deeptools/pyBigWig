@@ -1,7 +1,7 @@
 [![PyPI version](https://badge.fury.io/py/pyBigWig.svg)](https://badge.fury.io/py/pyBigWig) [![Travis-CI status](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master)](https://travis-ci.org/dpryan79/pyBigWig.svg?branch=master) [![bioconda-badge](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg)](http://bioconda.github.io) [![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.45238.svg)](http://dx.doi.org/10.5281/zenodo.45238)
 
 # pyBigWig
-A python extension, written in C, for quick access to and creation of bigWig files. This extension uses [libBigWig](https://github.com/dpryan79/libBigWig) for local and remote file access.
+A python extension, written in C, for quick access to bigBed files and access to and creation of bigWig files. This extension uses [libBigWig](https://github.com/dpryan79/libBigWig) for local and remote file access.
 
 Table of Contents
 =================
