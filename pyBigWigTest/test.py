@@ -183,6 +183,7 @@ class TestNumpy():
         import os
         if pyBigWig.numpy == 0:
             return 0
+        import numpy as np
 
         bw = pyBigWig.open("/tmp/delete.bw", "w")
         bw.addHeader([("1", 1000)], maxZooms=0)
