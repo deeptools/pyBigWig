@@ -911,7 +911,9 @@ int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyO
     uint32_t n, *ustarts = NULL, *uends = NULL;
     float *fvalues = NULL;
     int rv;
+#ifdef WITHNUMPY
     void *foo;
+#endif
 
     if(PyList_Check(starts)) sz = PyList_Size(starts);
 #ifdef WITHNUMPY
@@ -1271,16 +1273,18 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
 #endif
         if(sz == 0) return 0;
         for(i=0; i<sz; i++) {
-            if(PyList_Check(chroms)) {
-                tmp = PyList_GetItem(chroms, i);
-                cTid = bwGetTid(self->bw, PyString_AsString(tmp));
 #ifdef WITHNUMPY
-            } else {
+            if(PyArray_Check(chroms)) {
                 tmpStr = getNumpyStr((PyArrayObject*)chroms, i);
                 cTid = bwGetTid(self->bw, tmpStr);
                 free(tmpStr);
+            } else {
 #endif
+                tmp = PyList_GetItem(chroms, i);
+                cTid = bwGetTid(self->bw, PyString_AsString(tmp));
+#ifdef WITHNUMPY
             }
+#endif
             if(PyErr_Occurred()) return 0;
             if(cTid == (uint32_t) -1) return 0;
 
@@ -1292,13 +1296,15 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
 #endif
             }
             if(PyErr_Occurred()) return 0;
-            if(PyList_Check(ends)) {
-                uend = Numeric2Uint(PyList_GetItem(ends, i));
 #ifdef WITHNUMPY
+            if(PyArray_Check(ends)) {
+                uend = Numeric2Uint(PyList_GetItem(ends, i));
             } else {
-                uend = getNumpyU32((PyArrayObject*) ends, i);
 #endif
+                uend = getNumpyU32((PyArrayObject*) ends, i);
+#ifdef WITHNUMPY
             }
+#endif
             if(PyErr_Occurred()) return 0;
 
             if(ustart >= uend) return 0;
@@ -1333,13 +1339,15 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
             if(lastTid > cTid) return 0;
         }
         for(i=0; i<sz; i++) {
-            if(PyList_Check(starts)) {
+#ifdef WITHNUMPY
+            if(PyArray_Check(starts)) {
+                ustart = getNumpyU32((PyArrayObject*)starts, i);
+            } else {
+#endif
                 ustart = Numeric2Uint(PyList_GetItem(starts, i));
 #ifdef WITHNUMPY
-            } else {
-                ustart = getNumpyU32((PyArrayObject*)starts, i);
-#endif
             }
+#endif
             if(PyErr_Occurred()) return 0;
             uend = ustart + uspan;
 
