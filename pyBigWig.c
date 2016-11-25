@@ -749,10 +749,14 @@ int isType1(PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span
     if(!isNumeric(span)) return rv;
 
     if(PyList_Check(starts)) sz = PyList_Size(starts);
+#ifdef WITHNUMPY
     if(PyArray_Check(starts)) sz += PyArray_Size(starts);
+#endif
 
     if(PyList_Check(values)) if(sz != PyList_Size(values)) return rv;
+#ifdef WITHNUMPY
     if(PyArray_Check(values)) if(sz != PyArray_Size(values)) return rv;
+#endif
 
     if(PyList_Check(starts)) {
         for(i=0; i<sz; i++) {
@@ -819,7 +823,9 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
     Py_ssize_t i, sz = 0;
     uint32_t tid, uspan, ustep, ustart;
     PyObject *tmp;
+#ifdef WITHNUMPY
     void *foo;
+#endif
 
     if(self->lastType == -1) return 0;
     if(self->lastTid == -1) return 0;
@@ -833,24 +839,28 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         if(PyArray_Check(chroms)) sz = PyArray_Size(chroms);
 #endif
         for(i=0; i<sz; i++) {
-            if(PyList_Check(chroms)) {
+#ifdef WITHNUMPY
+            if(PyArray_Check(chroms)) {
+                foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
+                tid = bwGetTid(bw, PyString_AsString(PyArray_GETITEM((PyArrayObject*)chroms, foo)));
+            } else {
+#endif
                 tmp = PyList_GetItem(chroms, i);
                 tid = bwGetTid(bw, PyString_AsString(tmp));
 #ifdef WITHNUMPY
-            } else {
-                foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
-                tid = bwGetTid(bw, PyString_AsString(PyArray_GETITEM((PyArrayObject*)chroms, foo)));
-#endif
             }
+#endif
             if(tid != (uint32_t) self->lastTid) return 0;
         }
-        if(PyList_Check(starts)) {
+#ifdef WITHNUMPY
+        if(PyArray_Check(starts)) {
+            ustart = getNumpyU32((PyArrayObject*)starts, 0);
+        } else {
+#endif
             ustart = Numeric2Uint(PyList_GetItem(starts, 0));
 #ifdef WITHNUMPY
-        } else {
-            ustart = getNumpyU32((PyArrayObject*)starts, 0);
-#endif
         }
+#endif
         if(PyErr_Occurred()) return 0;
         if(ustart < self->lastStart) return 0;
         return 1;
@@ -863,9 +873,11 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         tid = bwGetTid(bw, PyString_AsString(chroms));
         if(tid != (uint32_t) self->lastTid) return 0;
 
-        if(PyList_Check(starts)) ustart = Numeric2Uint(PyList_GetItem(starts, 0));
 #ifdef WITHNUMPY
+        if(PyList_Check(starts)) ustart = Numeric2Uint(PyList_GetItem(starts, 0));
         else ustart = getNumpyU32((PyArrayObject*) starts, 0);
+#else
+        ustart = Numeric2Uint(PyList_GetItem(starts, 0));
 #endif
         if(PyErr_Occurred()) return 0;
         if(ustart < self->lastStart) return 0;
