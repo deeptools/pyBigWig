@@ -10,6 +10,7 @@ try:
     WITHNUMPY = True
 except:
     WITHNUMPY = False
+WITHNUMPY = False
 
 srcs = [x for x in 
     glob.glob("libBigWig/*.c")]
