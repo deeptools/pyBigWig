@@ -53,7 +53,7 @@ extern "C" {
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.3.0
+#define LIBBIGWIG_VERSION 0.3.1
 
 /*!
  * The magic number of a bigWig file.
