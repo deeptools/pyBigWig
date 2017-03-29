@@ -53,7 +53,18 @@ extern "C" {
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.3.1
+#define LIBBIGWIG_VERSION 0.3.3
+
+/*!
+ * If 1, then this library was compiled with remote file support.
+ */
+#ifdef NOCURL
+#define LIBBIGWIG_CURL 0
+typedef int CURLcode;
+typedef void CURL;
+#else
+#define LIBBIGWIG_CURL 1
+#endif
 
 /*!
  * The magic number of a bigWig file.

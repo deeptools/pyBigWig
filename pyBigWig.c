@@ -1592,6 +1592,11 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
 #else
     PyModule_AddIntConstant(res, "numpy", 0);
 #endif
+#ifdef NOCURL
+    PyModule_AddIntConstant(res, "remote", 0);
+#else
+    PyModule_AddIntConstant(res, "remote", 1);
+#endif
 
     return res;
 }
@@ -1611,6 +1616,11 @@ PyMODINIT_FUNC initpyBigWig(void) {
     PyModule_AddIntConstant(res, "numpy", 1);
 #else
     PyModule_AddIntConstant(res, "numpy", 0);
+#endif
+#ifdef NOCURL
+    PyModule_AddIntConstant(res, "remote", 0);
+#else
+    PyModule_AddIntConstant(res, "remote", 1);
 #endif
 }
 #endif

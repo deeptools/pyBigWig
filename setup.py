@@ -28,10 +28,13 @@ else :
 
 additional_libs = [sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LIBPL")]
 
+defines = []
 try:
     foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
 except:
-    sys.exit("Either libcurl isn't installed, it didn't come with curl-config, or curl-config isn't in your $PATH. This must be corrected before installing pyBigWig!\n")
+    foo = ''
+    defines.append(('NOCURL', None))
+    sys.stderr.write("Either libcurl isn't installed, it didn't come with curl-config, or curl-config isn't in your $PATH. pyBigWig will be installed without support for remote files.\n")
 
 foo = foo.strip().split()
 for v in foo:
@@ -39,7 +42,6 @@ for v in foo:
         additional_libs.append(v[2:])
 
 include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")]
-defines = []
 if WITHNUMPY is True:
     defines.extend([('WITHNUMPY', None), ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')])
     extra_info = get_info('npymath')

@@ -92,6 +92,7 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
         if(rv != Z_OK) goto error;
     } else {
         buf = compBuf;
+        sz = o->size[i];
     }
 
     p = buf;
@@ -123,12 +124,12 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
 
     free(v);
     free(buf);
-    free(compBuf);
+    if(compressed) free(compBuf);
     return vals;
 
 error:
     if(buf) free(buf);
-    if(compBuf) free(compBuf);
+    if(compBuf && compressed) free(compBuf);
     if(v) free(v);
     destroyVals_t(vals);
     return NULL;

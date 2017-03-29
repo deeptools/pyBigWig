@@ -40,15 +40,19 @@ int bwInit(size_t defaultBufSize) {
     GLOBAL_DEFAULTBUFFERSIZE = defaultBufSize;
 
     //call curl_global_init()
+#ifndef NOCURL
     CURLcode rv;
     rv = curl_global_init(CURL_GLOBAL_ALL);
     if(rv != CURLE_OK) return 1;
+#endif
     return 0;
 }
 
 //This should be called before quiting, to release memory acquired by curl
 void bwCleanup() {
+#ifndef NOCURL
     curl_global_cleanup();
+#endif
 }
 
 static bwZoomHdr_t *bwReadZoomHdrs(bigWigFile_t *bw) {
@@ -152,6 +156,9 @@ static void bwHdrRead(bigWigFile_t *bw) {
         if(bwRead((void*) &(bw->hdr->sumData), sizeof(uint64_t), 1, bw) != 1) goto error;
         if(bwRead((void*) &(bw->hdr->sumSquared), sizeof(uint64_t), 1, bw) != 1) goto error;
     }
+
+    //In case of uncompressed remote files, let the IO functions know to request larger chunks
+    bw->URL->isCompressed = (bw->hdr->bufSize > 0)?1:0;
 
     return;
 

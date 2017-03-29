@@ -21,7 +21,8 @@ Table of Contents
     * [Add a header to a bigWig file](#add-a-header-to-a-bigwig-file)
     * [Adding entries to a bigWig file](#adding-entries-to-a-bigwig-file)
     * [Close a bigWig or bigBed file](#close-a-bigwig-or-bigbed-file)
-  * [Numpy](#Numpy)
+  * [Numpy](#numpy)
+  * [Remote file access](#remote-file-access)
   * [A note on coordinates](#a-note-on-coordinates)
   * [Galaxy](#galaxy)
 
@@ -295,6 +296,10 @@ Additionally, `values()` can directly output a numpy vector:
          nan         nan         nan         nan]
     >>> type(bw.values('1', 0, 10, numpy=True))
     <type 'numpy.ndarray'>
+
+# Remote file access
+
+If you do not have curl installed, pyBigWig will be installed without the ability to access remote files. You can determine if you will be able to access remote files with `pyBigWig.remote`. If that returns 1, then you can access remote files. If it returns 0 then you can't.
 
 # A note on coordinates
 
