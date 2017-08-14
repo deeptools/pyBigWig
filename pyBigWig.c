@@ -194,6 +194,17 @@ static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
     return Py_None;
 }
 
+static PyObject *pyBwEnter(pyBigWigFile_t *self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
+    Py_INCREF(self);
+    return (PyObject*) self;
+}
+
 //Accessor for the header (version, nLevels, nBasesCovered, minVal, maxVal, sumData, sumSquared
 static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;

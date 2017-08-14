@@ -13,6 +13,7 @@ typedef struct {
 } pyBigWigFile_t;
 
 static PyObject *pyBwOpen(PyObject *self, PyObject *pyFname);
+static PyObject *pyBwEnter(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwClose(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyBwGetChroms(pyBigWigFile_t *pybw, PyObject *args);
 static PyObject *pyIsBigWig(pyBigWigFile_t *pybw, PyObject *args);
@@ -375,6 +376,8 @@ Keyword arguments:\n\
 >>> bw.addEntries([\"1\", \"1\", \"1\"], [0, 100, 125], ends=[5, 120, 126], values=[0.0, 1.0, 200.0], validate=False)\n\
 >>> bw.close()\n\
 >>> os.remove(oname)"},
+    {"__enter__", (PyCFunction)pyBwEnter, METH_NOARGS, NULL},
+    {"__exit__", (PyCFunction)pyBwClose, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
