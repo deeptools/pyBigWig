@@ -90,18 +90,22 @@ static int writeAtPos(void *ptr, size_t sz, size_t nmemb, size_t pos, FILE *fp) 
     return 0;
 }
 
-//Are nblocks and nperblock correct?
 //We lose keySize bytes on error
 static int writeChromList(FILE *fp, chromList_t *cl) {
     uint16_t k;
     uint32_t j, magic = CIRTREE_MAGIC;
-    uint32_t nperblock = (cl->nKeys>0xFFFF)?-1:cl->nKeys; //Items per leaf/non-leaf
-    uint32_t nblocks = (cl->nKeys>>16)+1, keySize = 0, valSize = 8; //does the valSize even matter? I ignore it...
-    uint64_t i, written = 0;
+    uint16_t nperblock = (cl->nKeys>0xFFFF)?0xFFFF:cl->nKeys; //Items per leaf/non-leaf
+    uint32_t nblocks = (cl->nKeys>>16)+1, keySize = 0, valSize = 8; //In theory valSize could be optimized, in practice that'd be annoying
+    uint64_t i, written = 0, nonLeafEnd, nonLeafStart, leafSize, nextLeaf;
     uint8_t eight;
     int64_t i64;
     char *chrom;
     size_t l;
+
+    if(cl->nKeys > 0xFFFFFFFF) {
+        fprintf(stderr, "[writeChromList] Error: The BigWig format does not support more than 4294967295 contigs!\n");
+        return 1;
+    }
 
     for(i64=0; i64<cl->nKeys; i64++) {
         l = strlen(cl->chrom[i64]);
@@ -126,10 +130,14 @@ static int writeChromList(FILE *fp, chromList_t *cl) {
         eight = 0;
         if(fwrite(&eight, sizeof(uint8_t), 1, fp) != 1) return 7;
         if(fwrite(&eight, sizeof(uint8_t), 1, fp) != 1) return 8; //padding
-        j = 0;
-        for(i=0; i<nperblock; i++) { //Why yes, this is pointless
+        if(fwrite(&nblocks, sizeof(uint16_t), 1, fp) != 1) return 8;
+        nonLeafEnd = ftell(fp) + nblocks * (keySize + 8);
+        leafSize = nperblock * (keySize + 8);
+        for(i=0; i<nblocks; i++) { //Why yes, this is pointless
+            chrom = strncpy(chrom, cl->chrom[i * nperblock], keySize);
+            nextLeaf = nonLeafEnd + i * leafSize;
             if(fwrite(chrom, keySize, 1, fp) != 1) return 9;
-            if(fwrite(&j, sizeof(uint64_t), 1, fp) != 1) return 10;
+            if(fwrite(&nextLeaf, sizeof(uint64_t), 1, fp) != 1) return 10;
         }
     }
 
