@@ -94,18 +94,20 @@ static int writeAtPos(void *ptr, size_t sz, size_t nmemb, size_t pos, FILE *fp) 
 static int writeChromList(FILE *fp, chromList_t *cl) {
     uint16_t k;
     uint32_t j, magic = CIRTREE_MAGIC;
-    uint16_t nperblock = (cl->nKeys>0xFFFF)?0xFFFF:cl->nKeys; //Items per leaf/non-leaf
-    uint32_t nblocks = (cl->nKeys>>16)+1, keySize = 0, valSize = 8; //In theory valSize could be optimized, in practice that'd be annoying
-    uint64_t i, written = 0, nonLeafEnd, nonLeafStart, leafSize, nextLeaf;
+    uint32_t nperblock = (cl->nKeys > 0x7FFF) ? 0x7FFF : cl->nKeys; //Items per leaf/non-leaf, there are no unsigned ints in java :(
+    uint32_t nblocks, keySize = 0, valSize = 8; //In theory valSize could be optimized, in practice that'd be annoying
+    uint64_t i, nonLeafEnd, leafSize, nextLeaf;
     uint8_t eight;
     int64_t i64;
     char *chrom;
     size_t l;
 
-    if(cl->nKeys > 0xFFFFFFFF) {
-        fprintf(stderr, "[writeChromList] Error: The BigWig format does not support more than 4294967295 contigs!\n");
+    if(cl->nKeys > 1073676289) {
+        fprintf(stderr, "[writeChromList] Error: Currently only 1,073,676,289 contigs are supported. If you really need more then please post a request on github.\n");
         return 1;
     }
+    nblocks = cl->nKeys/nperblock;
+    nblocks += ((cl->nKeys % nperblock) > 0)?1:0;
 
     for(i64=0; i64<cl->nKeys; i64++) {
         l = strlen(cl->chrom[i64]);
@@ -126,36 +128,53 @@ static int writeChromList(FILE *fp, chromList_t *cl) {
     if(fwrite(&i, sizeof(uint64_t), 1, fp) != 1) return 6;
 
     //Do we need a non-leaf node?
-    if(nblocks>1) {
+    if(nblocks > 1) {
         eight = 0;
         if(fwrite(&eight, sizeof(uint8_t), 1, fp) != 1) return 7;
         if(fwrite(&eight, sizeof(uint8_t), 1, fp) != 1) return 8; //padding
         if(fwrite(&nblocks, sizeof(uint16_t), 1, fp) != 1) return 8;
-        nonLeafEnd = ftell(fp) + nblocks * (keySize + 8);
-        leafSize = nperblock * (keySize + 8);
+        nonLeafEnd = ftell(fp) + nperblock * (keySize + 8);
+        leafSize = nperblock * (keySize + 8) + 4;
         for(i=0; i<nblocks; i++) { //Why yes, this is pointless
             chrom = strncpy(chrom, cl->chrom[i * nperblock], keySize);
             nextLeaf = nonLeafEnd + i * leafSize;
             if(fwrite(chrom, keySize, 1, fp) != 1) return 9;
             if(fwrite(&nextLeaf, sizeof(uint64_t), 1, fp) != 1) return 10;
         }
+        for(i=0; i<keySize; i++) chrom[i] = '\0';
+        nextLeaf = 0;
+        for(i=nblocks; i<nperblock; i++) {
+            if(fwrite(chrom, keySize, 1, fp) != 1) return 9;
+            if(fwrite(&nextLeaf, sizeof(uint64_t), 1, fp) != 1) return 10;
+        }
     }
 
     //Write the leaves
+    nextLeaf = 0;
     for(i=0, j=0; i<nblocks; i++) {
         eight = 1;
         if(fwrite(&eight, sizeof(uint8_t), 1, fp) != 1) return 11;
         eight = 0;
         if(fwrite(&eight, sizeof(uint8_t), 1, fp) != 1) return 12;
-        if(cl->nKeys - written < nperblock) nperblock = cl->nKeys - written;
-        if(fwrite(&nperblock, sizeof(uint16_t), 1, fp) != 1) return 13;
+        if(cl->nKeys - j < nperblock) {
+            k = cl->nKeys - j;
+            if(fwrite(&k, sizeof(uint16_t), 1, fp) != 1) return 13;
+        } else {
+            if(fwrite(&nperblock, sizeof(uint16_t), 1, fp) != 1) return 13;
+        }
         for(k=0; k<nperblock; k++) {
-            if(j>=cl->nKeys) return 14;
-            chrom = strncpy(chrom, cl->chrom[j], keySize);
-            if(fwrite(chrom, keySize, 1, fp) != 1) return 15;
-            if(fwrite(&j, sizeof(uint32_t), 1, fp) != 1) return 16;
-            if(fwrite(&(cl->len[j++]), sizeof(uint32_t), 1, fp) != 1) return 17;
-            written++;
+            if(j>=cl->nKeys) {
+                if(chrom[0]) {
+                    for(l=0; l<keySize; l++) chrom[l] = '\0';
+                }
+                if(fwrite(chrom, keySize, 1, fp) != 1) return 15;
+                if(fwrite(&nextLeaf, sizeof(uint64_t), 1, fp) != 1) return 16;
+            } else {
+                chrom = strncpy(chrom, cl->chrom[j], keySize);
+                if(fwrite(chrom, keySize, 1, fp) != 1) return 15;
+                if(fwrite(&j, sizeof(uint32_t), 1, fp) != 1) return 16;
+                if(fwrite(&(cl->len[j++]), sizeof(uint32_t), 1, fp) != 1) return 17;
+            }
         }
     }
 
