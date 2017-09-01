@@ -27,7 +27,7 @@ The only functions and structures that end users need to care about are in "bigW
         //Open the local/remote file
         fp = bwOpen(argv[1], NULL, "r");
         if(!fp) {
-            fprintf(stderr, "An error occured while opening %s\n", argv[1]);
+            fprintf(stderr, "An error occurred while opening %s\n", argv[1]);
             return 1;
         }
 
