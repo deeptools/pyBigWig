@@ -161,13 +161,19 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     } else {
         bw = bbOpen(fname, NULL);
     }
-    if(!bw) goto error;
+    if(!bw) {
+fprintf(stderr, "[pyBwOpen] bw is NULL!\n");
+        goto error;
+    }
     if(!mode || !strchr(mode, 'w')) {
         if(!bw->cl) goto error;
     }
 
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
-    if(!pybw) goto error;
+    if(!pybw) {
+fprintf(stderr, "[pyBwOpen] PyObject_New() returned NULL (out of memory?)!\n");
+        goto error;
+    }
     pybw->bw = bw;
     pybw->lastTid = -1;
     pybw->lastType = -1;

@@ -351,19 +351,31 @@ bigWigFile_t *bwOpen(char *fname, CURLcode (*callBack) (CURL*), const char *mode
     if((!mode) || (strchr(mode, 'w') == NULL)) {
         bwg->isWrite = 0;
         bwg->URL = urlOpen(fname, *callBack, NULL);
-        if(!bwg->URL) goto error;
+        if(!bwg->URL) {
+fprintf(stderr, "[bwOpen] urlOpen is NULL!\n");
+            goto error;
+        }
 
         //Attempt to read in the fixed header
         bwHdrRead(bwg);
-        if(!bwg->hdr) goto error;
+        if(!bwg->hdr) {
+fprintf(stderr, "[bwOpen] bwg->hdr is NULL!\n");
+            goto error;
+        }
 
         //Read in the chromosome list
         bwg->cl = bwReadChromList(bwg);
-        if(!bwg->cl) goto error;
+        if(!bwg->cl) {
+fprintf(stderr, "[bwOpen] bwg->cl is NULL!\n");
+            goto error;
+        }
 
         //Read in the index
         bwg->idx = bwReadIndex(bwg, 0);
-        if(!bwg->idx) goto error;
+        if(!bwg->idx) {
+fprintf(stderr, "[bwOpen] bwg->idx is NULL!\n");
+            goto error;
+        }
 
     } else {
         bwg->isWrite = 1;
