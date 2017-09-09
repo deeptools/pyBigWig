@@ -221,6 +221,7 @@ static uint64_t readChromNonLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t key
         previous += 8 + keySize;
     }
 
+fprintf(stderr, "[readChromNonLeaf] returning %"PRIu64"\n", rv);
     return rv;
 }
 
@@ -241,48 +242,34 @@ static chromList_t *bwReadChromList(bigWigFile_t *bw) {
     chromList_t *cl = NULL;
     uint32_t magic, keySize, valueSize, itemsPerBlock;
     uint64_t rv, itemCount;
-    if(bw->isWrite) {
-fprintf(stderr, "0\n"); return NULL;}
-    if(bwSetPos(bw, bw->hdr->ctOffset)) {
-fprintf(stderr, "1\n"); return NULL;}
+    if(bw->isWrite) return NULL;
+    if(bwSetPos(bw, bw->hdr->ctOffset)) return NULL;
 
     cl = calloc(1, sizeof(chromList_t));
-    if(!cl) {
-fprintf(stderr, "2\n"); return NULL;}
+    if(!cl) return NULL;
 
-    if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) {
-fprintf(stderr, "3\n"); goto error;}
-    if(magic != CIRTREE_MAGIC) {
-fprintf(stderr, "4\n"); goto error;}
+    if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) goto error;
+    if(magic != CIRTREE_MAGIC) goto error;
 
-    if(bwRead((void*) &itemsPerBlock, sizeof(uint32_t), 1, bw) != 1) {
-fprintf(stderr, "5\n"); goto error;}
-    if(bwRead((void*) &keySize, sizeof(uint32_t), 1, bw) != 1) {
-fprintf(stderr, "6\n"); goto error;}
-    if(bwRead((void*) &valueSize, sizeof(uint32_t), 1, bw) != 1) {
-fprintf(stderr, "7\n"); goto error;}
-    if(bwRead((void*) &itemCount, sizeof(uint64_t), 1, bw) != 1) {
-fprintf(stderr, "8\n"); goto error;}
+    if(bwRead((void*) &itemsPerBlock, sizeof(uint32_t), 1, bw) != 1) goto error;
+    if(bwRead((void*) &keySize, sizeof(uint32_t), 1, bw) != 1) goto error;
+    if(bwRead((void*) &valueSize, sizeof(uint32_t), 1, bw) != 1) goto error;
+    if(bwRead((void*) &itemCount, sizeof(uint64_t), 1, bw) != 1) goto error;
 
     cl->nKeys = itemCount;
     cl->chrom = calloc(itemCount, sizeof(char*));
     cl->len = calloc(itemCount, sizeof(uint32_t));
-    if(!cl->chrom) {
-fprintf(stderr, "9\n"); goto error;}
-    if(!cl->len) {
-fprintf(stderr, "10\n"); goto error;}
+    if(!cl->chrom) goto error;
+    if(!cl->len) goto error;
 
-    if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) {
-fprintf(stderr, "11\n"); goto error;}
-    if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) {
-fprintf(stderr, "12\n"); goto error;}
+    if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) goto error;
+    if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) goto error;
 
     //Read in the blocks
     rv = readChromBlock(bw, cl, keySize);
-    if(rv == (uint64_t) -1) {
-fprintf(stderr, "13\n"); goto error;}
+    if(rv == (uint64_t) -1) goto error;
     if(rv != itemCount) {
-fprintf(stderr, "14\n"); goto error;}
+fprintf(stderr, "[bwReadChromList] rv %"PRIu64" itemCount %"PRIu64" itemsPerBlock %"PRIu32"\n", rv, itemCount, itemsPerBlock); goto error;}
 
     return cl;
 
