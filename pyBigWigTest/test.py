@@ -12,6 +12,10 @@ class TestRemote():
         assert(bw is not None)
         return bw
 
+    def doOpenWith(self):
+        with pyBigWig.open(self.fname) as bw:
+            assert(bw.chroms() == {'1': 195471971, '10': 130694993})
+
     def doChroms(self, bw):
         assert(bw.chroms() == {'1': 195471971, '10': 130694993})
         assert(bw.chroms("1") == 195471971)
@@ -162,6 +166,7 @@ class TestRemote():
         self.doIntervals(bw)
         self.doWrite(bw)
         if not self.fname.startswith("http"):
+            self.doOpenWith()
             self.doWrite2()
             self.doWriteEmpty()
         bw.close()
