@@ -232,6 +232,15 @@ URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*), const char *mode) {
                 fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_WRITEDATA!\n");
                 goto error;
             }
+            //Ignore certificate errors with https, libcurl just isn't reliable enough with conda
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_SSL_VERIFYPEER, 0) != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_SSL_VERIFYPEER to 0!\n");
+                goto error;
+            }
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_SSL_VERIFYHOST, 0) != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_SSL_VERIFYHOST to 0!\n");
+                goto error;
+            }
             if(callBack) {
                 code = callBack(URL->x.curl);
                 if(code != CURLE_OK) {
