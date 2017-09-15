@@ -206,9 +206,25 @@ static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
     return Py_None;
 }
 
+static PyObject *pyBwEnter(pyBigWigFile_t *self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
+    Py_INCREF(self);
+    return (PyObject*) self;
+}
+
 //Accessor for the header (version, nLevels, nBasesCovered, minVal, maxVal, sumData, sumSquared
 static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
     PyObject *ret, *val;
 
     ret = PyDict_New();
@@ -245,8 +261,14 @@ error :
 
 //Accessor for the chroms, args is optional
 static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
-    PyObject *ret = NULL, *val;
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
+    PyObject *ret = NULL, *val;
+
     char *chrom = NULL;
     uint32_t i;
 
@@ -294,6 +316,11 @@ enum bwStatsType char2enum(char *s) {
 //Fetch summary statistics, default is the mean of the entire chromosome.
 static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
     double *val;
     uint32_t start, end = -1, tid;
     unsigned long startl = 0, endl = -1;
@@ -378,6 +405,11 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args, PyObject *k
 static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 #endif
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
     int i;
     uint32_t start, end = -1, tid;
     unsigned long startl, endl;
@@ -456,6 +488,11 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 
 static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
     uint32_t start, end = -1, tid, i;
     unsigned long startl = 0, endl = -1;
     static char *kwd_list[] = {"chrom", "start", "end", NULL};
@@ -564,6 +601,11 @@ uint32_t Numeric2Uint(PyObject *obj) {
 //This runs bwCreateHdr, bwCreateChromList, and bwWriteHdr
 PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
     char **chroms = NULL;
     int64_t n;
     uint32_t *lengths = NULL, len;
@@ -860,6 +902,11 @@ int getType(PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values
 //1: Can use a bwAppend* function. 0: must use a bwAdd* function
 int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject *starts, PyObject *span, PyObject *step) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 0;
+    }
+
     Py_ssize_t i, sz = 0;
     uint32_t tid, uspan, ustep, ustart;
     PyObject *tmp;
@@ -946,6 +993,11 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 //Returns 0 on success, 1 on error. Sets self->lastTid && self->lastStart (unless there was an error)
 int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 1;
+    }
+
     Py_ssize_t i, sz = 0;
     char **cchroms = NULL;
     uint32_t n, *ustarts = NULL, *uends = NULL;
@@ -1025,6 +1077,11 @@ error:
 //Returns 0 on success, 1 on error. Update self->lastStart
 int PyAppendIntervals(pyBigWigFile_t *self, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 1;
+    }
+
     Py_ssize_t i, sz = 0;
     uint32_t n, *ustarts = NULL, *uends = NULL;
     float *fvalues = NULL;
@@ -1085,6 +1142,11 @@ error:
 //Returns 0 on success, 1 on error. Sets self->lastTid/lastStart/lastSpan (unless there was an error)
 int PyAddIntervalSpans(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 1;
+    }
+
     Py_ssize_t i, sz = 0;
     char *cchroms = NULL;
     uint32_t n, *ustarts = NULL, uspan;
@@ -1150,6 +1212,11 @@ error:
 //Returns 0 on success, 1 on error. Updates self->lastStart
 int PyAppendIntervalSpans(pyBigWigFile_t *self, PyObject *starts, PyObject *values) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 1;
+    }
+
     Py_ssize_t i, sz = 0;
     uint32_t n, *ustarts = NULL;
     float *fvalues = NULL;
@@ -1208,6 +1275,11 @@ error:
 //Returns 0 on success, 1 on error. Sets self->lastTid/self->lastSpan/lastStep/lastStart (unless there was an error)
 int PyAddIntervalSpanSteps(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *values, PyObject *span, PyObject *step) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 1;
+    }
+
     Py_ssize_t i, sz = 0;
     char *cchrom = NULL;
     uint32_t n, ustarts, uspan, ustep;
@@ -1257,6 +1329,11 @@ error:
 //Returns 0 on success, 1 on error. Sets self->lastStart
 int PyAppendIntervalSpanSteps(pyBigWigFile_t *self, PyObject *values) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 1;
+    }
+
     Py_ssize_t i, sz = 0;
     uint32_t n;
     float *fvalues = NULL;
@@ -1296,6 +1373,12 @@ error:
 //Checks and ensures that (A) the entries are sorted correctly and don't overlap and (B) that the come after things that have already been added.
 //Returns 1 on correct input, 0 on incorrect input
 int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *span, PyObject *step, int type) {
+    bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return 0;
+    }
+
     uint32_t lastTid = self->lastTid;
     uint32_t lastEnd = self->lastStart;
     uint32_t cTid, ustart, uend, uspan, ustep;
@@ -1316,12 +1399,12 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
 #ifdef WITHNUMPY
             if(PyArray_Check(chroms)) {
                 tmpStr = getNumpyStr((PyArrayObject*)chroms, i);
-                cTid = bwGetTid(self->bw, tmpStr);
+                cTid = bwGetTid(bw, tmpStr);
                 free(tmpStr);
             } else {
 #endif
                 tmp = PyList_GetItem(chroms, i);
-                cTid = bwGetTid(self->bw, PyString_AsString(tmp));
+                cTid = bwGetTid(bw, PyString_AsString(tmp));
 #ifdef WITHNUMPY
             }
 #endif
@@ -1375,7 +1458,7 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
         if(PyErr_Occurred()) return 0;
         if(uspan < 1) return 0;
         if(sz == 0) return 0;
-        cTid = bwGetTid(self->bw, PyString_AsString(chroms));
+        cTid = bwGetTid(bw, PyString_AsString(chroms));
         if(cTid == (uint32_t) -1) return 0;
         if(lastTid != (uint32_t) -1) {
             if(lastTid > cTid) return 0;
@@ -1402,7 +1485,7 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
         return 1;
     } else if(type == 2) {
         //The chrom and start need to be appropriate
-        cTid = bwGetTid(self->bw, PyString_AsString(chroms));
+        cTid = bwGetTid(bw, PyString_AsString(chroms));
         if(cTid == (uint32_t) -1) return 0;
         ustart = Numeric2Uint(starts);
         if(PyErr_Occurred()) return 0;
@@ -1424,6 +1507,12 @@ int addEntriesInputOK(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, 
 }
 
 PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
+    bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
     static char *kwd_list[] = {"chroms", "starts", "ends", "values", "span", "step", "validate", NULL};
     PyObject *chroms = NULL, *starts = NULL, *ends = NULL, *values = NULL, *span = NULL, *step = NULL;
     PyObject *validate = Py_True;
@@ -1491,6 +1580,11 @@ error:
 
 static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigBed file handle is not open.");
+        return NULL;
+    }
+
     uint32_t i;
     uint32_t start, end = -1, tid;
     unsigned long startl, endl;
@@ -1561,6 +1655,11 @@ error:
 
 static PyObject *pyBBGetSQL(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigBed file handle is not open.");
+        return NULL;
+    }
+
     char *str = bbGetSQL(bw);
     size_t len = 0;
     PyObject *o = NULL;
@@ -1583,6 +1682,11 @@ static PyObject *pyBBGetSQL(pyBigWigFile_t *self, PyObject *args) {
 
 static PyObject *pyIsBigWig(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigWig file handle is not open.");
+        return NULL;
+    }
+
     if(bw->type == 0) {
         Py_INCREF(Py_True);
         return Py_True;
@@ -1594,6 +1698,11 @@ static PyObject *pyIsBigWig(pyBigWigFile_t *self, PyObject *args) {
 
 static PyObject *pyIsBigBed(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "bigBed file handle is not open.");
+        return NULL;
+    }
+
     if(bw->type == 1) {
         Py_INCREF(Py_True);
         return Py_True;
