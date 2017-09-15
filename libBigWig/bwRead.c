@@ -240,7 +240,7 @@ static uint64_t readChromBlock(bigWigFile_t *bw, chromList_t *cl, uint32_t keySi
 static chromList_t *bwReadChromList(bigWigFile_t *bw) {
     chromList_t *cl = NULL;
     uint32_t magic, keySize, valueSize, itemsPerBlock;
-    uint64_t i, rv, itemCount;
+    uint64_t rv, itemCount;
     if(bw->isWrite) return NULL;
     if(bwSetPos(bw, bw->hdr->ctOffset)) return NULL;
 
@@ -265,12 +265,9 @@ static chromList_t *bwReadChromList(bigWigFile_t *bw) {
     if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) goto error; //padding
 
     //Read in the blocks
-    i = 0;
-    while(i<itemCount) {
-        rv = readChromBlock(bw, cl, keySize);
-        if(rv == (uint64_t) -1) goto error;
-        i += rv;
-    }
+    rv = readChromBlock(bw, cl, keySize);
+    if(rv == (uint64_t) -1) goto error;
+    if(rv != itemCount) goto error;
 
     return cl;
 
