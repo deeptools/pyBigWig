@@ -23,6 +23,7 @@ Table of Contents
     * [Close a bigWig or bigBed file](#close-a-bigwig-or-bigbed-file)
   * [Numpy](#numpy)
   * [Remote file access](#remote-file-access)
+  * [Empty files](#empty-files)
   * [A note on coordinates](#a-note-on-coordinates)
   * [Galaxy](#galaxy)
 
@@ -300,6 +301,12 @@ Additionally, `values()` can directly output a numpy vector:
 # Remote file access
 
 If you do not have curl installed, pyBigWig will be installed without the ability to access remote files. You can determine if you will be able to access remote files with `pyBigWig.remote`. If that returns 1, then you can access remote files. If it returns 0 then you can't.
+
+# Empty files
+
+As of version 0.3.5, pyBigWig is able to read and write bigWig files lacking entries. Please note that such files are generally not compatible with other programs, since there's no definition of how a bigWig file with no entries should look. For such a file, the `intervals()` accessor will return `None`, the `stats()` function will return a list of `None` of the desired length, and `values()` will return `[]` (an empty list). This should generally allow programs utilizing pyBigWig to continue without issue.
+
+For those wishing to mimic the functionality of pyBigWig/libBigWig in this regard, please note that it looks at the number of bases covered (as reported in the file header) to check for "empty" files.
 
 # A note on coordinates
 

@@ -354,31 +354,32 @@ bigWigFile_t *bwOpen(char *fname, CURLcode (*callBack) (CURL*), const char *mode
         bwg->isWrite = 0;
         bwg->URL = urlOpen(fname, *callBack, NULL);
         if(!bwg->URL) {
-fprintf(stderr, "[bwOpen] urlOpen is NULL!\n");
+            fprintf(stderr, "[bwOpen] urlOpen is NULL!\n");
             goto error;
         }
 
         //Attempt to read in the fixed header
         bwHdrRead(bwg);
         if(!bwg->hdr) {
-fprintf(stderr, "[bwOpen] bwg->hdr is NULL!\n");
+            fprintf(stderr, "[bwOpen] bwg->hdr is NULL!\n");
             goto error;
         }
 
         //Read in the chromosome list
         bwg->cl = bwReadChromList(bwg);
         if(!bwg->cl) {
-fprintf(stderr, "[bwOpen] bwg->cl is NULL (%s)!\n", fname);
+            fprintf(stderr, "[bwOpen] bwg->cl is NULL (%s)!\n", fname);
             goto error;
         }
 
         //Read in the index
-        bwg->idx = bwReadIndex(bwg, 0);
-        if(!bwg->idx) {
-fprintf(stderr, "[bwOpen] bwg->idx is NULL!\n");
-            goto error;
+        if(bwg->hdr->nBasesCovered) {
+            bwg->idx = bwReadIndex(bwg, 0);
+            if(!bwg->idx) {
+                fprintf(stderr, "[bwOpen] bwg->idx is NULL bwg->hdr->dataOffset 0x%"PRIx64"!\n", bwg->hdr->dataOffset);
+                goto error;
+            }
         }
-
     } else {
         bwg->isWrite = 1;
         bwg->URL = urlOpen(fname, NULL, "w+");
