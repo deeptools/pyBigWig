@@ -79,6 +79,12 @@ error:
     return 0;
 };
 
+//Return 1 if there are any entries at all
+int hasEntries(bigWigFile_t *bw) {
+    if(bw->hdr->nBasesCovered > 0) return 1;
+    return 0;
+}
+
 //Raises an exception on error, which should be checked
 float getNumpyF(PyArrayObject *obj, Py_ssize_t i) {
     int dtype;
@@ -161,13 +167,19 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     } else {
         bw = bbOpen(fname, NULL);
     }
-    if(!bw) goto error;
+    if(!bw) {
+fprintf(stderr, "[pyBwOpen] bw is NULL!\n");
+        goto error;
+    }
     if(!mode || !strchr(mode, 'w')) {
         if(!bw->cl) goto error;
     }
 
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
-    if(!pybw) goto error;
+    if(!pybw) {
+fprintf(stderr, "[pyBwOpen] PyObject_New() returned NULL (out of memory?)!\n");
+        goto error;
+    }
     pybw->bw = bw;
     pybw->lastTid = -1;
     pybw->lastType = -1;
@@ -322,6 +334,16 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
         return NULL;
     }
 
+    //Return a list of None if there are no entries at all
+    if(!hasEntries(bw)) {
+        ret = PyList_New(nBins);
+        for(i=0; i<nBins; i++) {
+            Py_INCREF(Py_None);
+            PyList_SetItem(ret, i, Py_None);
+        }
+        return ret;
+    }
+
     //Get the actual statistics
     if(exact == Py_True) {
         val = bwStatsFromFull(bw, chrom, start, end, nBins, char2enum(type));
@@ -393,6 +415,18 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
         return NULL;
     }
 
+    if(!hasEntries(self->bw)) {
+#ifdef WITHNUMPY
+        if(outputNumpy == Py_True) {
+            return PyArray_SimpleNew(0, NULL, NPY_FLOAT);
+        } else {
+#endif
+            return PyList_New(0);
+#ifdef WITHNUMPY
+        }
+#endif
+    }
+
     o = bwGetValues(self->bw, chrom, start, end, 1);
     if(!o) {
         PyErr_SetString(PyExc_RuntimeError, "An error occurred while fetching values!");
@@ -451,6 +485,12 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     if(end <= start || end > bw->cl->len[tid] || start >= end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
+    }
+
+    //Check for empty files
+    if(!hasEntries(bw)) {
+        Py_INCREF(Py_None);
+        return Py_None;
     }
 
     //Get the intervals

@@ -126,7 +126,30 @@ class TestRemote():
         bw.close()
         #check md5sum, this is the simplest method to check correctness
         h = hashlib.md5(open(oname, "rb").read()).hexdigest()
-        assert(h=="b1ca91d2ff42afdd2efa19a007c1ded4")
+        assert(h=="ef104f198c6ce8310acc149d0377fc16")
+        #Clean up
+        os.remove(oname)
+
+    def doWriteEmpty(self):
+        ofile = tempfile.NamedTemporaryFile(delete=False)
+        oname = ofile.name
+        ofile.close()
+        bw = pyBigWig.open(oname, "w")
+        bw.addHeader([("1", 1000000), ("2", 1500000)])
+        bw.close()
+
+        #check md5sum
+        h = hashlib.md5(open(oname, "rb").read()).hexdigest()
+        assert(h=="361c600e5badf0b45d819552a7822937")
+
+        #Ensure we can open and get reasonable results
+        bw = pyBigWig.open(oname)
+        assert(bw.chroms() == {'1': 1000000, '2': 1500000})
+        assert(bw.intervals("1") == None)
+        assert(bw.values("1", 0, 1000000) == [])
+        assert(bw.stats("1", 0, 1000000, nBins=2) == [None, None])
+        bw.close()
+
         #Clean up
         os.remove(oname)
 
@@ -138,8 +161,9 @@ class TestRemote():
         self.doValues(bw)
         self.doIntervals(bw)
         self.doWrite(bw)
-        if self.fname == "pyBigWigTest/test.bw":
+        if not self.fname.startswith("http"):
             self.doWrite2()
+            self.doWriteEmpty()
         bw.close()
 
 class TestLocal():

@@ -736,7 +736,7 @@ int writeIndex(bigWigFile_t *fp) {
     bwLL *ll = fp->writeBuffer->firstIndexNode, *p;
     bwRTreeNode_t *root = NULL;
 
-    if(!fp->writeBuffer->nBlocks) return 1;
+    if(!fp->writeBuffer->nBlocks) return 0;
     fp->idx = malloc(sizeof(bwRTree_t));
     if(!fp->idx) return 2;
     fp->idx->root = root;
@@ -1249,7 +1249,7 @@ int bwFinalize(bigWigFile_t *fp) {
     if(writeIndex(fp)) return 4;
 
     //Zoom level stuff here?
-    if(fp->hdr->nLevels) {
+    if(fp->hdr->nLevels && fp->writeBuffer->nBlocks) {
         offset = bwTell(fp);
         if(makeZoomLevels(fp)) return 5;
         if(constructZoomLevels(fp)) return 6;
