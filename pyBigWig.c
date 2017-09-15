@@ -153,6 +153,19 @@ char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
 }
 #endif
 
+PyObject* pyBwEnter(pyBigWigFile_t*self, PyObject *args) {
+    bigWigFile_t *bw = self->bw;
+
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
+        return NULL;
+    }
+
+    Py_INCREF(self);
+
+    return self;
+}
+
 PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     char *fname = NULL;
     char *mode = "r";
@@ -168,7 +181,7 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
         bw = bbOpen(fname, NULL);
     }
     if(!bw) {
-fprintf(stderr, "[pyBwOpen] bw is NULL!\n");
+        fprintf(stderr, "[pyBwOpen] bw is NULL!\n");
         goto error;
     }
     if(!mode || !strchr(mode, 'w')) {
@@ -177,7 +190,7 @@ fprintf(stderr, "[pyBwOpen] bw is NULL!\n");
 
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
     if(!pybw) {
-fprintf(stderr, "[pyBwOpen] PyObject_New() returned NULL (out of memory?)!\n");
+        fprintf(stderr, "[pyBwOpen] PyObject_New() returned NULL (out of memory?)!\n");
         goto error;
     }
     pybw->bw = bw;
@@ -210,6 +223,11 @@ static PyObject *pyBwClose(pyBigWigFile_t *self, PyObject *args) {
 static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
     PyObject *ret, *val;
+
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
+        return NULL;
+    }
 
     ret = PyDict_New();
     val = PyLong_FromUnsignedLong(bw->hdr->version);
@@ -249,6 +267,11 @@ static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
     char *chrom = NULL;
     uint32_t i;
+
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
+        return NULL;
+    }
 
     if(!(PyArg_ParseTuple(args, "|s", &chrom)) || !chrom) {
         ret = PyDict_New();
@@ -302,6 +325,11 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     PyObject *ret, *exact = Py_False;
     int i, nBins = 1;
     errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
+
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not open!");
+        return NULL;
+    }
 
     if(bw->type == 1) {
         PyErr_SetString(PyExc_RuntimeError, "bigBed files have no statistics!");
@@ -385,6 +413,11 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     PyObject *ret;
     bwOverlappingIntervals_t *o;
 
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not open!");
+        return NULL;
+    }
+
     if(bw->type == 1) {
         PyErr_SetString(PyExc_RuntimeError, "bigBed files have no values! Use 'entries' instead.");
         return NULL;
@@ -462,6 +495,11 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     bwOverlappingIntervals_t *intervals = NULL;
     char *chrom;
     PyObject *ret;
+
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
+        return NULL;
+    }
 
     if(bw->type == 1) {
         PyErr_SetString(PyExc_RuntimeError, "bigBed files have no intervals! Use 'entries()' instead.");
@@ -572,6 +610,11 @@ PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     static char *kwd_list[] = {"cl", "maxZooms", NULL};
     PyObject *InputTuple = NULL, *tmpObject, *tmpObject2;
     Py_ssize_t i, pyLen;
+
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not open!");
+        return NULL;
+    }
 
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|k", kwd_list, &InputTuple, &zoomTmp)) {
         PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
@@ -1429,6 +1472,11 @@ PyObject *pyBwAddEntries(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     PyObject *validate = Py_True;
     int desiredType;
 
+    if(!self->bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not open!");
+        return NULL;
+    }
+
     if(!PyArg_ParseTupleAndKeywords(args, kwds, "OO|OOOOO", kwd_list, &chroms, &starts, &ends, &values, &span, &step, &validate)) {
         PyErr_SetString(PyExc_RuntimeError, "Illegal arguments");
         return NULL;
@@ -1501,6 +1549,11 @@ static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *
     int withString = 1;
     bbOverlappingEntries_t *o;
 
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigBed file handle is not open!");
+        return NULL;
+    }
+
     if(bw->type == 0) {
         PyErr_SetString(PyExc_RuntimeError, "bigWig files have no entries! Use 'intervals' or 'values' instead.");
         return NULL;  
@@ -1565,6 +1618,11 @@ static PyObject *pyBBGetSQL(pyBigWigFile_t *self, PyObject *args) {
     size_t len = 0;
     PyObject *o = NULL;
 
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigBed file handle is not open!");
+        return NULL;
+    }
+
     if(!str) {
         Py_INCREF(Py_None);
         return Py_None;
@@ -1594,6 +1652,12 @@ static PyObject *pyIsBigWig(pyBigWigFile_t *self, PyObject *args) {
 
 static PyObject *pyIsBigBed(pyBigWigFile_t *self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
+
+    if(!bw) {
+        PyErr_SetString(PyExc_RuntimeError, "The bigBed file handle is not open!");
+        return NULL;
+    }
+
     if(bw->type == 1) {
         Py_INCREF(Py_True);
         return Py_True;
