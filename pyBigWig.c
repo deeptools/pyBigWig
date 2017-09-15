@@ -163,7 +163,7 @@ PyObject* pyBwEnter(pyBigWigFile_t*self, PyObject *args) {
 
     Py_INCREF(self);
 
-    return self;
+    return (PyObject*) self;
 }
 
 PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {

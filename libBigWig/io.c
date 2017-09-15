@@ -125,6 +125,7 @@ CURLcode urlSeek(URL_t *URL, size_t pos) {
     if(URL->type == BWG_FILE) {
 #endif
         if(fseek(URL->x.fp, pos, SEEK_SET) == 0) {
+            errno = 0;
             return CURLE_OK;
         } else {
             return CURLE_FAILED_INIT; //This is arbitrary
@@ -147,6 +148,7 @@ CURLcode urlSeek(URL_t *URL, size_t pos) {
             if(rv != CURLE_OK) {
                 fprintf(stderr, "[urlSeek] curl_easy_perform received an error!\n");
             }
+            errno = 0;  //Don't propogate remnant resolved libCurl errors
             return rv;
         } else {
             URL->bufPos = pos-URL->filePos;

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
+#include <errno.h>
 
 static uint32_t roundup(uint32_t v) {
     v--;
@@ -46,6 +47,9 @@ static bwRTree_t *readRTreeIdx(bigWigFile_t *fp, uint64_t offset) {
     //Padding
     if(bwRead(&(node->blockSize), sizeof(uint32_t), 1, fp) != 1) goto error;
     node->rootOffset = bwTell(fp);
+
+    //For remote files, libCurl sometimes sets errno to 115 and doesn't clear it
+    errno = 0;
 
     return node;
 

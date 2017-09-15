@@ -383,6 +383,7 @@ double *bwStatsFromZoom(bigWigFile_t *fp, int32_t level, uint32_t tid, uint32_t 
         fp->hdr->zoomHdrs->idx[level] = bwReadIndex(fp, fp->hdr->zoomHdrs->indexOffset[level]);
         if(!fp->hdr->zoomHdrs->idx[level]) return NULL;
     }
+    errno = 0; //Sometimes libCurls sets and then doesn't unset errno on errors
 
     output = malloc(sizeof(double)*nBins);
     if(!output) return NULL;
