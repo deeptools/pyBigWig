@@ -221,7 +221,6 @@ static uint64_t readChromNonLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t key
         previous += 8 + keySize;
     }
 
-fprintf(stderr, "[readChromNonLeaf] returning %"PRIu64"\n", rv);
     return rv;
 }
 
