@@ -268,7 +268,6 @@ static chromList_t *bwReadChromList(bigWigFile_t *bw) {
     rv = readChromBlock(bw, cl, keySize);
     if(rv == (uint64_t) -1) goto error;
     if(rv != itemCount) {
-fprintf(stderr, "[bwReadChromList] rv %"PRIu64" itemCount %"PRIu64" itemsPerBlock %"PRIu32"\n", rv, itemCount, itemsPerBlock); goto error;}
 
     return cl;
 

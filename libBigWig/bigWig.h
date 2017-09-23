@@ -1,4 +1,4 @@
-#include "io.h"
+#include "bigWigIO.h"
 #include "bwValues.h"
 #include <inttypes.h>
 #include <zlib.h>
@@ -53,7 +53,7 @@ extern "C" {
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.3.3
+#define LIBBIGWIG_VERSION 0.4.1
 
 /*!
  * If 1, then this library was compiled with remote file support.
