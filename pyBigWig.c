@@ -79,12 +79,6 @@ error:
     return 0;
 };
 
-//Return 1 if there are any entries at all
-int hasEntries(bigWigFile_t *bw) {
-    if(bw->hdr->nBasesCovered > 0) return 1;
-    return 0;
-}
-
 //Raises an exception on error, which should be checked
 float getNumpyF(PyArrayObject *obj, Py_ssize_t i) {
     int dtype;
@@ -152,6 +146,12 @@ char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
     return NULL;
 }
 #endif
+
+//Return 1 if there are any entries at all
+int hasEntries(bigWigFile_t *bw) {
+    if(bw->hdr->nBasesCovered > 0) return 1;
+    return 0;
+}
 
 PyObject* pyBwEnter(pyBigWigFile_t*self, PyObject *args) {
     bigWigFile_t *bw = self->bw;
