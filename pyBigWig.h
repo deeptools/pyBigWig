@@ -2,6 +2,8 @@
 #include <structmember.h>
 #include "bigWig.h"
 
+char **pyBigWigVersion = "0.3.7";
+
 typedef struct {
     PyObject_HEAD
     bigWigFile_t *bw;
@@ -52,6 +54,10 @@ Arguments:\n\
 \n\
 >>> import pyBigWig\n\
 >>> bw = pyBigWig.open(\"some_file.bw\")\n"},
+    {NULL, NULL, 0, NULL}
+};
+
+static PyMethodDef bwObjMethods[] = {
     {"header", (PyCFunction)pyBwGetHeader, METH_VARARGS,
 "Returns the header of a bigWig file. This contains information such as: \n\
   * The version number of the file ('version').\n\
@@ -436,7 +442,7 @@ static PyTypeObject bigWigFile = {
     0,                         /*tp_weaklistoffset*/
     0,                         /*tp_iter*/
     0,                         /*tp_iternext*/
-    bwMethods,                 /*tp_methods*/
+    bwObjMethods,                 /*tp_methods*/
     0,                         /*tp_members*/
     0,                         /*tp_getset*/
     0,                         /*tp_base*/

@@ -1675,16 +1675,24 @@ static PyObject *pyIsBigBed(pyBigWigFile_t *self, PyObject *args) {
 
 #if PY_MAJOR_VERSION >= 3
 PyMODINIT_FUNC PyInit_pyBigWig(void) {
+#else
+PyMODINIT_FUNC initpyBigWig(void) {
+#endif
     PyObject *res;
     errno = 0; //just in case
 
+#if PY_MAJOR_VERSION >= 3
     if(Py_AtExit(bwCleanup)) return NULL;
-
     if(PyType_Ready(&bigWigFile) < 0) return NULL;
-    if(Py_AtExit(bwCleanup)) return NULL;
     if(bwInit(128000)) return NULL;
     res = PyModule_Create(&pyBigWigmodule);
     if(!res) return NULL;
+#else
+    if(Py_AtExit(bwCleanup)) return;
+    if(PyType_Ready(&bigWigFile) < 0) return;
+    if(bwInit(128000)) return;
+    res = Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
+#endif
 
     Py_INCREF(&bigWigFile);
     PyModule_AddObject(res, "pyBigWig", (PyObject *) &bigWigFile);
@@ -1701,30 +1709,9 @@ PyMODINIT_FUNC PyInit_pyBigWig(void) {
 #else
     PyModule_AddIntConstant(res, "remote", 1);
 #endif
+    PyModule_AddStringConstant(res, "__version__", pyBigWigVersion);
 
+#if PY_MAJOR_VERSION >= 3
     return res;
-}
-#else
-//Python2 initialization
-PyMODINIT_FUNC initpyBigWig(void) {
-    PyObject *res;
-    errno=0; //Sometimes libpython2.7.so is missing some links...
-    if(Py_AtExit(bwCleanup)) return;
-    if(PyType_Ready(&bigWigFile) < 0) return;
-    if(bwInit(128000)) return; //This is temporary
-    res = Py_InitModule3("pyBigWig", bwMethods, "A module for handling bigWig files");
-
-#ifdef WITHNUMPY
-    //Add the numpy constant
-    import_array(); //Needed for numpy stuff to work
-    PyModule_AddIntConstant(res, "numpy", 1);
-#else
-    PyModule_AddIntConstant(res, "numpy", 0);
-#endif
-#ifdef NOCURL
-    PyModule_AddIntConstant(res, "remote", 0);
-#else
-    PyModule_AddIntConstant(res, "remote", 1);
 #endif
 }
-#endif
