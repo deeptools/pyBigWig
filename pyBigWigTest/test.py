@@ -179,7 +179,7 @@ class TestLocal():
 
 class TestBigBed():
     def testBigBed(self):
-        fname = "test.bigBed"
+        fname = os.path.dirname(pyBigWig.__file__) + "/pyBigWigTest/test.bigBed"
         bb = pyBigWig.open(fname)
         assert(bb is not None)
         assert(bb.isBigWig() == 0)
