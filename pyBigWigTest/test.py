@@ -179,7 +179,7 @@ class TestLocal():
 
 class TestBigBed():
     def testBigBed(self):
-        fname = "http://www.encodeproject.org/files/ENCFF001JBR/@@download/ENCFF001JBR.bigBed"
+        fname = "test.bigBed"
         bb = pyBigWig.open(fname)
         assert(bb is not None)
         assert(bb.isBigWig() == 0)
