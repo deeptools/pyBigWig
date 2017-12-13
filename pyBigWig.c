@@ -921,11 +921,13 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 #ifdef WITHNUMPY
         if(PyArray_Check(chroms)) sz = PyArray_Size(chroms);
 #endif
+
         for(i=0; i<sz; i++) {
 #ifdef WITHNUMPY
             if(PyArray_Check(chroms)) {
                 foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
-                tid = bwGetTid(bw, PyString_AsString(PyArray_GETITEM((PyArrayObject*)chroms, foo)));
+                tmp = PyArray_GETITEM((PyArrayObject*)chroms, foo);
+                tid = bwGetTid(bw, PyString_AsString(tmp));
             } else {
 #endif
                 tmp = PyList_GetItem(chroms, i);
@@ -933,8 +935,10 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 #ifdef WITHNUMPY
             }
 #endif
+            Py_DECREF(tmp);
             if(tid != (uint32_t) self->lastTid) return 0;
         }
+
 #ifdef WITHNUMPY
         if(PyArray_Check(starts)) {
             ustart = getNumpyU32((PyArrayObject*)starts, 0);
@@ -990,6 +994,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
     Py_ssize_t i, sz = 0;
+    PyObject *tmp;
     char **cchroms = NULL;
     uint32_t n, *ustarts = NULL, *uends = NULL;
     float *fvalues = NULL;
@@ -1017,7 +1022,9 @@ int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyO
 #ifdef WITHNUMPY
         } else {
             foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
-            cchroms[i] = PyString_AsString(PyArray_GETITEM((PyArrayObject*)chroms, foo));
+            tmp = PyArray_GETITEM((PyArrayObject*)chroms, foo);
+            cchroms[i] = PyString_AsString(tmp);
+            Py_DECREF(tmp);
 #endif
         }
         if(PyList_Check(starts)) {
