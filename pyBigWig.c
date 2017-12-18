@@ -928,6 +928,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
                 foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
                 tmp = PyArray_GETITEM((PyArrayObject*)chroms, foo);
                 tid = bwGetTid(bw, PyString_AsString(tmp));
+                Py_DECREF(tmp);
             } else {
 #endif
                 tmp = PyList_GetItem(chroms, i);
@@ -935,7 +936,6 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 #ifdef WITHNUMPY
             }
 #endif
-            Py_DECREF(tmp);
             if(tid != (uint32_t) self->lastTid) return 0;
         }
 
