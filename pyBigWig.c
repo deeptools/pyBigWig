@@ -137,7 +137,7 @@ char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
         return o;
     case NPY_UNICODE:
         o = calloc(1, stride/4 + 1);
-        for(j=0; j<stride/4; j++) o[j] = (char) ((uint32_t*)p)[4*j];
+        for(j=0; j<stride/4; j++) o[j] = (char) ((uint32_t*)p)[j];
         return o;
     default:
         PyErr_SetString(PyExc_RuntimeError, "Received unknown data type!\n");
