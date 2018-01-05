@@ -171,10 +171,6 @@ class TestRemote():
         bw.addEntries(chroms, starts, ends=ends, values=values0)
         bw.close()
 
-        #check md5sum
-        h = hashlib.md5(open(oname, "rb").read()).hexdigest()
-        assert(h=="6bb89856d5cfc9b808506766811fbeca")
-
         vals = [(x, y, z) for x, y, z in zip(starts, ends, values0)]
         bw = pyBigWig.open(oname)
         assert(bw.chroms() == {'chr1': 100, 'chr2': 150, 'chr3': 200, 'chr4': 250})
