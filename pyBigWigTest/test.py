@@ -187,12 +187,12 @@ class TestRemote():
     def testAll(self):
         bw = self.doOpen()
         self.doChroms(bw)
-        self.doHeader(bw)
-        self.doStats(bw)
-        self.doValues(bw)
-        self.doIntervals(bw)
-        self.doWrite(bw)
         if not self.fname.startswith("http"):
+            self.doHeader(bw)
+            self.doStats(bw)
+            self.doValues(bw)
+            self.doIntervals(bw)
+            self.doWrite(bw)
             self.doOpenWith()
             self.doWrite2()
             self.doWriteEmpty()
