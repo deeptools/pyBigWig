@@ -173,7 +173,7 @@ class TestRemote():
 
         #check md5sum
         h = hashlib.md5(open(oname, "rb").read()).hexdigest()
-        assert(h=="abbe375a7249acc20fb544d796d984be")
+        assert(h=="6bb89856d5cfc9b808506766811fbeca")
 
         vals = [(x, y, z) for x, y, z in zip(starts, ends, values0)]
         bw = pyBigWig.open(oname)
