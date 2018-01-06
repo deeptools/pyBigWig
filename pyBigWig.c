@@ -119,6 +119,7 @@ error:
     return 0;
 }
 
+//The calling function needs to free the result
 char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
     char *p , *o = NULL;
     npy_intp stride, j;
@@ -137,7 +138,7 @@ char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
         return o;
     case NPY_UNICODE:
         o = calloc(1, stride/4 + 1);
-        for(j=0; j<stride/4; j++) o[j] = (char) ((uint32_t*)p)[4*j];
+        for(j=0; j<stride/4; j++) o[j] = (char) ((uint32_t*)p)[j];
         return o;
     default:
         PyErr_SetString(PyExc_RuntimeError, "Received unknown data type!\n");
@@ -908,6 +909,7 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
     PyObject *tmp;
 #ifdef WITHNUMPY
     void *foo;
+    char *chrom;
 #endif
 
     if(self->lastType == -1) return 0;
@@ -925,10 +927,9 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
         for(i=0; i<sz; i++) {
 #ifdef WITHNUMPY
             if(PyArray_Check(chroms)) {
-                foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
-                tmp = PyArray_GETITEM((PyArrayObject*)chroms, foo);
-                tid = bwGetTid(bw, PyString_AsString(tmp));
-                Py_DECREF(tmp);
+                chrom = getNumpyStr((PyArrayObject*)chroms, i);
+                tid = bwGetTid(bw, chrom);
+                free(chrom);
             } else {
 #endif
                 tmp = PyList_GetItem(chroms, i);
@@ -1021,10 +1022,7 @@ int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyO
             cchroms[i] = PyString_AsString(PyList_GetItem(chroms, i));
 #ifdef WITHNUMPY
         } else {
-            foo = PyArray_GETPTR1((PyArrayObject*)chroms, i);
-            tmp = PyArray_GETITEM((PyArrayObject*)chroms, foo);
-            cchroms[i] = PyString_AsString(tmp);
-            Py_DECREF(tmp);
+            cchroms[i] = getNumpyStr((PyArrayObject*)chroms, i);
 #endif
         }
         if(PyList_Check(starts)) {
@@ -1057,6 +1055,9 @@ int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyO
     if(!rv) {
         self->lastTid = bwGetTid(bw, cchroms[n-1]);
         self->lastStart = uends[n-1];
+    }
+    if(!PyList_Check(chroms)) {
+        for(i=0; i<n; i++) free(cchroms[i]);
     }
     free(cchroms);
     free(ustarts);

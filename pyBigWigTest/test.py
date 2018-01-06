@@ -157,18 +157,46 @@ class TestRemote():
         #Clean up
         os.remove(oname)
 
+    def doWriteNumpy(self):
+        import numpy as np
+        ofile = tempfile.NamedTemporaryFile(delete=False)
+        oname = ofile.name
+        ofile.close()
+        bw = pyBigWig.open(oname, "w")
+        bw.addHeader([("chr1", 100), ("chr2", 150), ("chr3", 200), ("chr4", 250)])
+        chroms = np.array(["chr1"] * 2 + ["chr2"] * 2 + ["chr3"] * 2 + ["chr4"] * 2)
+        starts = np.array([0, 10, 40, 50, 60, 70, 80, 90], dtype=np.int64)
+        ends = np.array([5, 15, 45, 55, 65, 75, 85, 95], dtype=np.int64)
+        values0 = np.array(np.random.random_sample(8), dtype=np.float64)
+        bw.addEntries(chroms, starts, ends=ends, values=values0)
+        bw.close()
+
+        vals = [(x, y, z) for x, y, z in zip(starts, ends, values0)]
+        bw = pyBigWig.open(oname)
+        assert(bw.chroms() == {'chr1': 100, 'chr2': 150, 'chr3': 200, 'chr4': 250})
+        for idx1, chrom in enumerate(["chr1", "chr2", "chr3", "chr4"]):
+            for idx2, tup in enumerate(bw.intervals(chrom)):
+                assert(tup[0] == starts[2 * idx1 + idx2])
+                assert(tup[1] == ends[2 * idx1 + idx2])
+                assert(np.isclose(tup[2], values0[2 * idx1 + idx2]))
+        bw.close()
+
+        #Clean up
+        os.remove(oname)
+
     def testAll(self):
         bw = self.doOpen()
         self.doChroms(bw)
-        self.doHeader(bw)
-        self.doStats(bw)
-        self.doValues(bw)
-        self.doIntervals(bw)
-        self.doWrite(bw)
         if not self.fname.startswith("http"):
+            self.doHeader(bw)
+            self.doStats(bw)
+            self.doValues(bw)
+            self.doIntervals(bw)
+            self.doWrite(bw)
             self.doOpenWith()
             self.doWrite2()
             self.doWriteEmpty()
+            self.doWriteNumpy()
         bw.close()
 
 class TestLocal():
