@@ -193,6 +193,7 @@ class TestRemote():
         if not self.fname.startswith("http"):
             self.doHeader(bw)
             self.doStats(bw)
+            self.doSum(bw)
             self.doValues(bw)
             self.doIntervals(bw)
             self.doWrite(bw)
