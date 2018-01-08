@@ -312,6 +312,7 @@ enum bwStatsType char2enum(char *s) {
     if(strcmp(s, "min") == 0) return min;
     if(strcmp(s, "cov") == 0) return cov;
     if(strcmp(s, "coverage") == 0) return cov;
+    if(strcmp(s, "sum") == 0) return sum;
     return -1;
 };
 

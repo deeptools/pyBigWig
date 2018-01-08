@@ -373,6 +373,52 @@ static double intCoverage(bwOverlappingIntervals_t* ints, uint32_t start, uint32
     return o/(end-start);
 }
 
+static double blockSum(bigWigFile_t *fp, bwOverlapBlock_t *blocks, uint32_t tid, uint32_t start, uint32_t end) {
+    uint32_t i, j, sizeUse;
+    double o = 0.0;
+    struct vals_t *v = NULL;
+
+    if(!blocks->n) return strtod("NaN", NULL);
+
+    //Iterate over the blocks
+    for(i=0; i<blocks->n; i++) {
+        v = getVals(fp, blocks, i, tid, start, end);
+        if(!v) goto error;
+        for(j=0; j<v->n; j++) {
+            //Multiply the block average by min(bases covered, block overlap with interval)
+            sizeUse = v->vals[j]->scalar;
+            if(sizeUse > v->vals[j]->nBases) sizeUse = v->vals[j]->nBases;
+            o+= (v->vals[j]->sum * sizeUse) / v->vals[j]->nBases;
+        }
+        destroyVals_t(v);
+    }
+
+    if(o == 0.0) return strtod("NaN", NULL);
+    return o;
+
+error:
+    destroyVals_t(v);
+    errno = ENOMEM;
+    return strtod("NaN", NULL);
+}
+
+static double intSum(bwOverlappingIntervals_t* ints, uint32_t start, uint32_t end) {
+    uint32_t i, start_use, end_use;
+    double o = 0.0;
+
+    if(!ints->l) return strtod("NaN", NULL);
+
+    for(i=0; i<ints->l; i++) {
+        start_use = ints->start[i];
+        end_use = ints->end[i];
+        if(start_use < start) start_use = start;
+        if(end_use > end) end_use = end;
+        o += (end_use - start_use) * ints->value[i];
+    }
+
+    return o;
+}
+
 //Returns NULL on error, otherwise a double* that needs to be free()d
 double *bwStatsFromZoom(bigWigFile_t *fp, int32_t level, uint32_t tid, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
     bwOverlapBlock_t *blocks = NULL;
@@ -413,6 +459,10 @@ double *bwStatsFromZoom(bigWigFile_t *fp, int32_t level, uint32_t tid, uint32_t 
         case 4:
             //cov
             output[i] = blockCoverage(fp, blocks, tid, pos, end2)/(end2-pos);
+            break;
+        case 5:
+            //sum
+            output[i] = blockSum(fp, blocks, tid, pos, end2);
             break;
         default:
             goto error;
@@ -463,6 +513,9 @@ double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t 
             break;
         case 4:
             output[i] = intCoverage(ints, pos, end2);
+            break;
+        case 5:
+            output[i] = intSum(ints, pos, end2);
             break;
         }
         bwDestroyOverlappingIntervals(ints);

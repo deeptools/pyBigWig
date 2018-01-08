@@ -38,6 +38,9 @@ class TestRemote():
         assert(bw.intervals("1", 0, 3) == ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896)))
         assert(bw.intervals("1") == ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896), (100, 150, 1.399999976158142), (150, 151, 1.5)))
 
+    def doSum(self, bw):
+        assert(bw.stats("1", 100, 151, type="sum", nBins=2) == [35.0, 36.5])
+
     def doWrite(self, bw):
         ofile = tempfile.NamedTemporaryFile(delete=False)
         oname = ofile.name
