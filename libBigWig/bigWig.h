@@ -53,7 +53,7 @@ extern "C" {
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.4.1
+#define LIBBIGWIG_VERSION 0.4.2
 
 /*!
  * If 1, then this library was compiled with remote file support.
@@ -95,15 +95,16 @@ typedef void CURL;
  * An enum that dictates the type of statistic to fetch for a given interval
  */
 enum bwStatsType {
-    doesNotExist = -1,
-    mean = 0,
-    average = 0,
-    stdev = 1,
-    dev = 1,
-    max = 2,
-    min = 3,
-    cov = 4,
-    coverage = 4
+    doesNotExist = -1, /*!< This does nothing */
+    mean = 0, /*!< The mean value */
+    average = 0, /*!< The mean value */
+    stdev = 1, /*!< The standard deviation of the values */
+    dev = 1, /*!< The standard deviation of the values */
+    max = 2, /*!< The maximum value */
+    min = 3, /*!< The minimum value */
+    cov = 4, /*!< The number of bases covered */
+    coverage = 4, /*!<The number of bases covered */ 
+    sum = 5 /*!< The sum of per-base values */
 };
 
 //Should hide this from end users
