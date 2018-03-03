@@ -18,7 +18,7 @@ srcs.append("pyBigWig.c")
 libs=["m", "z", "curl"]
 
 # do not link to python on mac, see https://github.com/deeptools/pyBigWig/issues/58
-if sysconfig.get_config_var('LDSHARED') is None or ('dynamic_lookup' not in sysconfig.get_config_var('LDSHARED')):
+if 'dynamic_lookup' not in (sysconfig.get_config_var('LDSHARED') or ''):
     if sysconfig.get_config_vars('BLDLIBRARY') is not None:
         #Note the "-l" prefix!
         for e in sysconfig.get_config_vars('BLDLIBRARY')[0].split():
