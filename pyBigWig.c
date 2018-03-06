@@ -909,7 +909,6 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
     uint32_t tid, uspan, ustep, ustart;
     PyObject *tmp;
 #ifdef WITHNUMPY
-    void *foo;
     char *chrom;
 #endif
 
@@ -996,14 +995,10 @@ int canAppend(pyBigWigFile_t *self, int desiredType, PyObject *chroms, PyObject 
 int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyObject *ends, PyObject *values) {
     bigWigFile_t *bw = self->bw;
     Py_ssize_t i, sz = 0;
-    PyObject *tmp;
     char **cchroms = NULL;
     uint32_t n, *ustarts = NULL, *uends = NULL;
     float *fvalues = NULL;
     int rv;
-#ifdef WITHNUMPY
-    void *foo;
-#endif
 
     if(PyList_Check(starts)) sz = PyList_Size(starts);
 #ifdef WITHNUMPY
