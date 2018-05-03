@@ -7,6 +7,7 @@
 #include "numpy/npy_common.h"
 #include "numpy/halffloat.h"
 #include "numpy/ndarrayobject.h"
+#include "numpy/arrayscalars.h"
 
 int lsize = NPY_SIZEOF_LONG;
 
@@ -78,6 +79,52 @@ uint32_t getNumpyU32(PyArrayObject *obj, Py_ssize_t i) {
 error:
     return 0;
 };
+
+long getNumpyL(PyObject *obj) {
+    short s;
+    int i;
+    long l;
+    long long ll;
+    unsigned short us;
+    unsigned int ui;
+    unsigned long ul;
+    unsigned long long ull;
+    
+    if(!PyArray_IsIntegerScalar(obj)) {
+        PyErr_SetString(PyExc_RuntimeError, "Received non-Integer scalar type for conversion to long!\n");
+        return 0;
+    }
+
+    if(PyArray_IsScalar(obj, Short)) {
+        s = ((PyShortScalarObject *)obj)->obval;
+        l = s;
+    } else if(PyArray_IsScalar(obj, Int)) {
+        i = ((PyLongScalarObject *)obj)->obval;
+        l = i;
+    } else if(PyArray_IsScalar(obj, Long)) {
+        l = ((PyLongScalarObject *)obj)->obval;
+    } else if(PyArray_IsScalar(obj, LongLong)) {
+        ll = ((PyLongScalarObject *)obj)->obval;
+        l = ll;
+    } else if(PyArray_IsScalar(obj, UShort)) {
+        us = ((PyLongScalarObject *)obj)->obval;
+        l = us;
+    } else if(PyArray_IsScalar(obj, UInt)) {
+        ui = ((PyLongScalarObject *)obj)->obval;
+        l = ui;
+    } else if(PyArray_IsScalar(obj, ULong)) {
+        ul = ((PyLongScalarObject *)obj)->obval;
+        l = ul;
+    } else if(PyArray_IsScalar(obj, ULongLong)) {
+        ull = ((PyLongScalarObject *)obj)->obval;
+        l = ull;
+    } else {
+        PyErr_SetString(PyExc_RuntimeError, "Received unknown scalar type for conversion to long!\n");
+        return 0;
+    }
+
+    return l;
+}
 
 //Raises an exception on error, which should be checked
 float getNumpyF(PyArrayObject *obj, Py_ssize_t i) {
@@ -324,7 +371,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     unsigned long startl = 0, endl = -1;
     static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", "exact", NULL};
     char *chrom, *type = "mean";
-    PyObject *ret, *exact = Py_False;
+    PyObject *ret, *exact = Py_False, *starto = NULL, *endo = NULL;
     int i, nBins = 1;
     errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
@@ -338,7 +385,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
         return NULL;
     }
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kksiO", kwd_list, &chrom, &startl, &endl, &type, &nBins, &exact)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|OOsiO", kwd_list, &chrom, &starto, &endo, &type, &nBins, &exact)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome!");
         return NULL;
     }
@@ -347,6 +394,35 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     if(!nBins) nBins = 1; //For some reason, not specifying this overrides the default!
     if(!type) type = "mean";
     tid = bwGetTid(bw, chrom);
+
+    if(starto) {
+#ifdef WITHNUMPY
+        if(PyArray_IsScalar(starto, Integer)) {
+            startl = (long) getNumpyL(starto);
+        } else 
+#endif
+        if(PyLong_Check(starto)) {
+            startl = PyLong_AsLong(starto);
+        } else {
+            PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
+            return NULL;
+        }
+    }
+
+    if(endo) {
+#ifdef WITHNUMPY
+        if(PyArray_IsScalar(endo, Integer)) {
+            endl = (long) getNumpyL(endo);
+        } else 
+#endif
+        if(PyLong_Check(endo)) {
+            endl = PyLong_AsLong(endo);
+        } else {
+            PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
+            return NULL;
+        }
+    }
+
     if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
     if(tid == (uint32_t) -1 || startl > end || endl > end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
@@ -412,7 +488,7 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     uint32_t start, end = -1, tid;
     unsigned long startl, endl;
     char *chrom;
-    PyObject *ret;
+    PyObject *ret, *starto = NULL, *endo = NULL;
     bwOverlappingIntervals_t *o;
 
     if(!bw) {
@@ -429,11 +505,11 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     static char *kwd_list[] = {"chrom", "start", "end", "numpy", NULL};
     PyObject *outputNumpy = Py_False;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "skk|O", kwd_list, &chrom, &startl, &endl, &outputNumpy)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "sOO|O", kwd_list, &chrom, &starto, &endo, &outputNumpy)) {
 #else
-    if(!PyArg_ParseTuple(args, "skk", &chrom, &startl, &endl)) {
+    if(!PyArg_ParseTuple(args, "sOO", &chrom, &starto, &endo)) {
 #endif
-        PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
+//        PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
         return NULL;
     }
 
@@ -443,6 +519,31 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
     }
+
+#ifdef WITHNUMPY
+    if(PyArray_IsScalar(starto, Integer)) {
+        startl = (long) getNumpyL(starto);
+    } else
+#endif
+    if(PyLong_Check(starto)) {
+        startl = PyLong_AsLong(starto);
+    } else {
+        PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
+        return NULL;
+    }
+
+#ifdef WITHNUMPY
+    if(PyArray_IsScalar(endo, Integer)) {
+        endl = (long) getNumpyL(endo);
+    } else
+#endif
+    if(PyLong_Check(endo)) {
+        endl = PyLong_AsLong(endo);
+    } else {
+        PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
+        return NULL;
+    }
+
     start = (uint32_t) startl;
     end = (uint32_t) endl;
     if(end <= start || end > bw->cl->len[tid] || start >= end) {
@@ -496,7 +597,7 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
     static char *kwd_list[] = {"chrom", "start", "end", NULL};
     bwOverlappingIntervals_t *intervals = NULL;
     char *chrom;
-    PyObject *ret;
+    PyObject *ret, *starto = NULL, *endo = NULL;
 
     if(!bw) {
         PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
@@ -508,7 +609,7 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
         return NULL;
     }
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|kk", kwd_list, &chrom, &startl, &endl)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|OO", kwd_list, &chrom, &starto, &endo)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome.\n");
         return NULL;
     }
@@ -520,6 +621,35 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
     }
+
+    if(starto) {
+#ifdef WITHNUMPY
+        if(PyArray_IsScalar(starto, Integer)) {
+            startl = (long) getNumpyL(starto);
+        } else
+#endif
+        if(PyLong_Check(starto)) {
+            startl = PyLong_AsLong(starto);
+        } else {
+            PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
+            return NULL;
+        }
+    }
+
+    if(endo) {
+#ifdef WITHNUMPY
+        if(PyArray_IsScalar(endo, Integer)) {
+            endl = (long) getNumpyL(endo);
+        } else
+#endif
+        if(PyLong_Check(endo)) {
+            endl = PyLong_AsLong(endo);
+        } else {
+            PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
+            return NULL;
+        }
+    }
+
     start = (uint32_t) startl;
     end = (uint32_t) endl;
     if(end <= start || end > bw->cl->len[tid] || start >= end) {
@@ -1548,7 +1678,7 @@ static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *
     unsigned long startl, endl;
     char *chrom;
     static char *kwd_list[] = {"chrom", "start", "end", "withString", NULL};
-    PyObject *ret, *t;
+    PyObject *ret, *t, *starto = NULL, *endo = NULL;
     PyObject *withStringPy = Py_True;
     int withString = 1;
     bbOverlappingEntries_t *o;
@@ -1563,12 +1693,37 @@ static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *
         return NULL;  
     }
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "skk|O", kwd_list, &chrom, &startl, &endl, &withStringPy)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "sOO|O", kwd_list, &chrom, &starto, &endo, &withStringPy)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
         return NULL;
     }
 
     tid = bwGetTid(bw, chrom);
+
+#ifdef WITHNUMPY
+    if(PyArray_IsScalar(starto, Integer)) {
+        startl = (long) getNumpyL(starto);
+    } else
+#endif
+    if(PyLong_Check(starto)) {
+        startl = PyLong_AsLong(starto);
+    } else {
+        PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
+        return NULL;
+    }
+
+#ifdef WITHNUMPY
+    if(PyArray_IsScalar(endo, Integer)) {
+        endl = (long) getNumpyL(endo);
+    } else
+#endif
+    if(PyLong_Check(endo)) {
+        endl = PyLong_AsLong(endo);
+    } else {
+        PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
+        return NULL;
+    }
+
     if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
     if(tid == (uint32_t) -1 || startl > end || endl > end) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");

@@ -3,6 +3,7 @@ import tempfile
 import os
 import sys
 import hashlib
+import numpy as np
 
 class TestRemote():
     fname = "http://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
@@ -28,14 +29,17 @@ class TestRemote():
         assert(bw.stats("1", 0, 3) == [0.2000000054637591])
         assert(bw.stats("1", 0, 3, type="max") == [0.30000001192092896])
         assert(bw.stats("1",99,200, type="max", nBins=2) == [1.399999976158142, 1.5])
+        assert(bw.stats("1",np.int64(99), np.int64(200), type="max", nBins=2) == [1.399999976158142, 1.5])
         assert(bw.stats("1") == [1.3351851569281683])
 
     def doValues(self, bw):
         assert(bw.values("1", 0, 3) == [0.10000000149011612, 0.20000000298023224, 0.30000001192092896])
+        assert(bw.values("1", np.int64(0), np.int64(3)) == [0.10000000149011612, 0.20000000298023224, 0.30000001192092896])
         #assert(bw.values("1", 0, 4) == [0.10000000149011612, 0.20000000298023224, 0.30000001192092896, 'nan'])
 
     def doIntervals(self, bw):
         assert(bw.intervals("1", 0, 3) == ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896)))
+        assert(bw.intervals("1", np.int64(0), np.int64(3)) == ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896)))
         assert(bw.intervals("1") == ((0, 1, 0.10000000149011612), (1, 2, 0.20000000298023224), (2, 3, 0.30000001192092896), (100, 150, 1.399999976158142), (150, 151, 1.5)))
 
     def doSum(self, bw):
@@ -161,7 +165,6 @@ class TestRemote():
         os.remove(oname)
 
     def doWriteNumpy(self):
-        import numpy as np
         ofile = tempfile.NamedTemporaryFile(delete=False)
         oname = ofile.name
         ofile.close()
@@ -236,6 +239,8 @@ class TestBigBed():
         assert(output == SQL)
         o = bb.entries('chr1',10000000,10020000)
         expected = [(10009333, 10009640, '61035\t130\t-\t0.026\t0.42\t404'), (10014007, 10014289, '61047\t136\t-\t0.029\t0.42\t404'), (10014373, 10024307, '61048\t630\t-\t5.420\t0.00\t2672399')]
+        assert(o == expected)
+        o = bb.entries('chr1',np.int64(10000000),np.int64(10020000))
         assert(o == expected)
         bb.close()
 
