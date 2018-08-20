@@ -15,7 +15,7 @@ srcs = [x for x in
     glob.glob("libBigWig/*.c")]
 srcs.append("pyBigWig.c")
 
-libs=["m", "z", "curl"]
+libs=["m", "z"]
 
 # do not link to python on mac, see https://github.com/deeptools/pyBigWig/issues/58
 if 'dynamic_lookup' not in (sysconfig.get_config_var('LDSHARED') or ''):
@@ -34,6 +34,7 @@ additional_libs = [sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var(
 defines = []
 try:
     foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
+    libs.append("curl")
 except:
     foo = ''
     defines.append(('NOCURL', None))
