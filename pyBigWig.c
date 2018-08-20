@@ -403,6 +403,10 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 #endif
         if(PyLong_Check(starto)) {
             startl = PyLong_AsLong(starto);
+#if PY_MAJOR_VERSION < 3
+        } else if(PyInt_Check(starto)) {
+            startl = PyInt_AsLong(starto);
+#endif
         } else {
             PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
             return NULL;
@@ -417,6 +421,10 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 #endif
         if(PyLong_Check(endo)) {
             endl = PyLong_AsLong(endo);
+#if PY_MAJOR_VERSION < 3
+        } else if(PyInt_Check(endo)) {
+            endl = PyInt_AsLong(endo);
+#endif
         } else {
             PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
             return NULL;
@@ -509,16 +517,11 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 #else
     if(!PyArg_ParseTuple(args, "sOO", &chrom, &starto, &endo)) {
 #endif
-//        PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
+        PyErr_SetString(PyExc_RuntimeError, "You must supply a chromosome, start and end position.\n");
         return NULL;
     }
 
     tid = bwGetTid(bw, chrom);
-    if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
-    if(tid == (uint32_t) -1 || startl > end || endl > end) {
-        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
-        return NULL;
-    }
 
 #ifdef WITHNUMPY
     if(PyArray_IsScalar(starto, Integer)) {
@@ -527,6 +530,10 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 #endif
     if(PyLong_Check(starto)) {
         startl = PyLong_AsLong(starto);
+#if PY_MAJOR_VERSION < 3
+    } else if(PyInt_Check(starto)) {
+        startl = PyInt_AsLong(starto);
+#endif
     } else {
         PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
         return NULL;
@@ -539,8 +546,18 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
 #endif
     if(PyLong_Check(endo)) {
         endl = PyLong_AsLong(endo);
+#if PY_MAJOR_VERSION < 3
+    } else if(PyInt_Check(endo)) {
+        endl = PyInt_AsLong(endo);
+#endif
     } else {
         PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
+        return NULL;
+    }
+
+    if(endl == (unsigned long) -1 && tid != (uint32_t) -1) endl = bw->cl->len[tid];
+    if(tid == (uint32_t) -1 || startl > end || endl > end) {
+        PyErr_SetString(PyExc_RuntimeError, "Invalid interval bounds!");
         return NULL;
     }
 
@@ -630,6 +647,10 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 #endif
         if(PyLong_Check(starto)) {
             startl = PyLong_AsLong(starto);
+#if PY_MAJOR_VERSION < 3
+        } else if(PyInt_Check(starto)) {
+            startl = PyInt_AsLong(starto);
+#endif
         } else {
             PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
             return NULL;
@@ -644,6 +665,10 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 #endif
         if(PyLong_Check(endo)) {
             endl = PyLong_AsLong(endo);
+#if PY_MAJOR_VERSION < 3
+        } else if(PyInt_Check(endo)) {
+            endl = PyInt_AsLong(endo);
+#endif
         } else {
             PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
             return NULL;
@@ -1707,6 +1732,10 @@ static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *
 #endif
     if(PyLong_Check(starto)) {
         startl = PyLong_AsLong(starto);
+#if PY_MAJOR_VERSION < 3
+    } else if(PyInt_Check(starto)) {
+        startl = PyInt_AsLong(starto);
+#endif
     } else {
         PyErr_SetString(PyExc_RuntimeError, "The start coordinate must be a number!");
         return NULL;
@@ -1719,6 +1748,10 @@ static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *
 #endif
     if(PyLong_Check(endo)) {
         endl = PyLong_AsLong(endo);
+#if PY_MAJOR_VERSION < 3
+    } else if(PyInt_Check(endo)) {
+        endl = PyInt_AsLong(endo);
+#endif
     } else {
         PyErr_SetString(PyExc_RuntimeError, "The end coordinate must be a number!");
         return NULL;
