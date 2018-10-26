@@ -73,7 +73,7 @@ static bwZoomHdr_t *bwReadZoomHdrs(bigWigFile_t *bw) {
         return NULL;
     }
     uint64_t *indexOffset = malloc(sizeof(uint64_t) * bw->hdr->nLevels);
-    if(!dataOffset) {
+    if(!indexOffset) {
         free(zhdr);
         free(level);
         free(dataOffset);
