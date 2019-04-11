@@ -2,7 +2,7 @@
 #include <structmember.h>
 #include "bigWig.h"
 
-#define pyBigWigVersion "0.3.13"
+#define pyBigWigVersion "0.3.14"
 
 typedef struct {
     PyObject_HEAD

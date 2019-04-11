@@ -24,9 +24,9 @@ if 'dynamic_lookup' not in (sysconfig.get_config_var('LDSHARED') or ''):
         for e in sysconfig.get_config_vars('BLDLIBRARY')[0].split():
             if e[0:2] == "-l":
                 libs.append(e[2:])
-    elif(sys.version_info[0] >= 3 and sys.version_info[1] >= 3) :
+    elif sys.version_info[0] >= 3 and sys.version_info[1] >= 3:
         libs.append("python%i.%im" % (sys.version_info[0], sys.version_info[1]))
-    else :
+    else:
         libs.append("python%i.%i" % (sys.version_info[0], sys.version_info[1]))
 
 additional_libs = [sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LIBPL")]
@@ -35,14 +35,14 @@ defines = []
 try:
     foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
     libs.append("curl")
+    foo = foo.decode().strip().split()
 except:
-    foo = ''
+    foo = []
     defines.append(('NOCURL', None))
     sys.stderr.write("Either libcurl isn't installed, it didn't come with curl-config, or curl-config isn't in your $PATH. pyBigWig will be installed without support for remote files.\n")
 
-foo = foo.decode().strip().split()
 for v in foo:
-    if(v[0:2] == '-L') :
+    if v[0:2] == '-L':
         additional_libs.append(v[2:])
 
 include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")]
