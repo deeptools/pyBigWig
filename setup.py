@@ -62,7 +62,7 @@ module1 = Extension('pyBigWig',
                     include_dirs = include_dirs)
 
 setup(name = 'pyBigWig',
-       version = '0.3.14',
+       version = '0.3.15',
        description = 'A package for accessing bigWig files using libBigWig',
        author = "Devon P. Ryan",
        author_email = "ryan@ie-freiburg.mpg.de",
