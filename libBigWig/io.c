@@ -133,7 +133,7 @@ CURLcode urlSeek(URL_t *URL, size_t pos) {
 #ifndef NOCURL
     } else {
         //If the location is covered by the buffer then don't seek!
-        if(pos < URL->filePos || pos >= URL->filePos+URL->bufSize) {
+        if(pos < URL->filePos || pos >= URL->filePos+URL->bufLen) {
             URL->filePos = pos;
             URL->bufLen = 0; //Otherwise, filePos will get incremented on the next read!
             URL->bufPos = 0;
