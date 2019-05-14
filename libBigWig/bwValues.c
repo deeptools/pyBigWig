@@ -33,7 +33,7 @@ static bwRTree_t *readRTreeIdx(bigWigFile_t *fp, uint64_t offset) {
         return NULL;
     }
 
-    node = malloc(sizeof(bwRTree_t));
+    node = calloc(1, sizeof(bwRTree_t));
     if(!node) return NULL;
 
     if(bwRead(&(node->blockSize), sizeof(uint32_t), 1, fp) != 1) goto error;
