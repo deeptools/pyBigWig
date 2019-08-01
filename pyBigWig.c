@@ -724,11 +724,7 @@ int PyString_Check(PyObject *obj) {
 
 //I don't know what happens if PyBytes_AsString(NULL) is used...
 char *PyString_AsString(PyObject *obj) {
-    char *s;
-    PyObject *t = PyUnicode_AsASCIIString(obj);
-    s = PyBytes_AsString(t);
-    Py_DECREF(t);  // Otherwise t just hangs around and wastes memory
-    return s;
+    return PyUnicode_AsUTF8(obj);
 }
 #endif
 
