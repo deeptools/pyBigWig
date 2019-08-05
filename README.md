@@ -144,9 +144,6 @@ For the sake of consistency with other tools, pyBigWig adopts this same methodol
     0.22213841940688142
     >>> bw.stats('chr1', 89294, 91629, exact=True)
     [0.22213841940688142]
-Additionally, `values()` can directly output a numpy vector:
-
-    >>> bw = bw.open("
 
 ## Retrieve values for individual bases in a range
 
@@ -217,6 +214,8 @@ bigWig headers are case-sensitive, so `chr1` and `Chr1` are different. Likewise,
 By default, up to 10 "zoom levels" are constructed for bigWig files. You can change this default number with the `maxZooms` optional argument. A common use of this is to create a bigWig file that simply holds intervals and no zoom levels:
 
     >>> bw.addHeader([("chr1", 1000000), ("chr2", 1500000)], maxZooms=0)
+
+If you set `maxTooms=0`, please note that IGV and many other tools WILL NOT WORK as they assume that at least one zoom level will be present. You are advised to use the default unless you do not expect the bigWig files to be used by other packages.
 
 ## Adding entries to a bigWig file
 
