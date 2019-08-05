@@ -276,6 +276,10 @@ static PyObject *pyBwGetHeader(pyBigWigFile_t *self, PyObject *args) {
         PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
         return NULL;
     }
+    if(bw->isWrite == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "The header cannot be accessed in files opened for writing!");
+        return NULL;
+    }
 
     ret = PyDict_New();
     val = PyLong_FromUnsignedLong(bw->hdr->version);
@@ -318,6 +322,11 @@ static PyObject *pyBwGetChroms(pyBigWigFile_t *self, PyObject *args) {
 
     if(!bw) {
         PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
+        return NULL;
+    }
+
+    if(bw->isWrite == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "Chromosomes cannot be accessed in files opened for writing!");
         return NULL;
     }
 
@@ -377,6 +386,11 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 
     if(!bw) {
         PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not open!");
+        return NULL;
+    }
+
+    if(bw->isWrite == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "Statistics cannot be accessed in files opened for writing!");
         return NULL;
     }
 
@@ -618,6 +632,11 @@ static PyObject *pyBwGetIntervals(pyBigWigFile_t *self, PyObject *args, PyObject
 
     if(!bw) {
         PyErr_SetString(PyExc_RuntimeError, "The bigWig file handle is not opened!");
+        return NULL;
+    }
+
+    if(bw->isWrite == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "Intervals cannot be accessed in files opened for writing!");
         return NULL;
     }
 
