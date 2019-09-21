@@ -378,9 +378,10 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
     double *val;
     uint32_t start, end = -1, tid;
     unsigned long startl = 0, endl = -1;
-    static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", "exact", NULL};
+    static char *kwd_list[] = {"chrom", "start", "end", "type", "nBins", "exact", "numpy", NULL};
     char *chrom, *type = "mean";
     PyObject *ret, *exact = Py_False, *starto = NULL, *endo = NULL;
+    PyObject *outputNumpy = Py_False;
     int i, nBins = 1;
     errno = 0; //In the off-chance that something elsewhere got an error and didn't clear it...
 
@@ -399,7 +400,7 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
         return NULL;
     }
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|OOsiO", kwd_list, &chrom, &starto, &endo, &type, &nBins, &exact)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "s|OOsiOO", kwd_list, &chrom, &starto, &endo, &type, &nBins, &exact, &outputNumpy)) {
         PyErr_SetString(PyExc_RuntimeError, "You must supply at least a chromosome!");
         return NULL;
     }
@@ -464,11 +465,26 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
 
     //Return a list of None if there are no entries at all
     if(!hasEntries(bw)) {
-        ret = PyList_New(nBins);
-        for(i=0; i<nBins; i++) {
-            Py_INCREF(Py_None);
-            PyList_SetItem(ret, i, Py_None);
+#ifdef WITHNUMPY
+        if(outputNumpy == Py_True) {
+            val = malloc(sizeof(double)*nBins);
+            for(i=0; i<nBins; i++) {
+                val[i] = NPY_NAN;
+            }
+            npy_intp len = nBins;
+            ret = PyArray_SimpleNewFromData(1, &len, NPY_FLOAT64, (void *) val);
+            //This will break if numpy ever stops using malloc!
+            PyArray_ENABLEFLAGS((PyArrayObject*) ret, NPY_ARRAY_OWNDATA);
+        } else {
+#endif
+            ret = PyList_New(nBins);
+            for(i=0; i<nBins; i++) {
+                Py_INCREF(Py_None);
+                PyList_SetItem(ret, i, Py_None);
+            }
+#ifdef WITHNUMPY
         }
+#endif
         return ret;
     }
 
@@ -484,17 +500,27 @@ static PyObject *pyBwGetStats(pyBigWigFile_t *self, PyObject *args, PyObject *kw
         return NULL;
     }
 
-    ret = PyList_New(nBins);
-    for(i=0; i<nBins; i++) {
-        if(isnan(val[i])) {
-            Py_INCREF(Py_None);
-            PyList_SetItem(ret, i, Py_None);
-        } else {
-            PyList_SetItem(ret, i, PyFloat_FromDouble(val[i]));
+#ifdef WITHNUMPY
+    if(outputNumpy == Py_True) {
+        npy_intp len = nBins;
+        ret = PyArray_SimpleNewFromData(1, &len, NPY_FLOAT64, (void *) val);
+        //This will break if numpy ever stops using malloc!
+        PyArray_ENABLEFLAGS((PyArrayObject*) ret, NPY_ARRAY_OWNDATA);
+    } else {
+#endif
+        ret = PyList_New(nBins);
+        for(i=0; i<nBins; i++) {
+            if(isnan(val[i])) {
+                Py_INCREF(Py_None);
+                PyList_SetItem(ret, i, Py_None);
+            } else {
+                PyList_SetItem(ret, i, PyFloat_FromDouble(val[i]));
+            }
         }
+        free(val);
+#ifdef WITHNUMPY
     }
-    free(val);
-
+#endif
     return ret;
 }
 
