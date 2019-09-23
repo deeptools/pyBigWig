@@ -308,3 +308,23 @@ class TestNumpy():
 
         bw.close()
         os.remove("/tmp/delete.bw")
+
+    def testNumpyValues(self):
+        if pyBigWig.numpy == 0:
+            return 0
+        import numpy as np
+
+        fname = "http://raw.githubusercontent.com/dpryan79/pyBigWig/master/pyBigWigTest/test.bw"
+        bw = pyBigWig.open(fname, "r")
+
+        assert np.allclose(
+            bw.values("1", 0, 20, numpy=True),
+            np.array(bw.values("1", 0, 20), dtype=np.float32),
+            equal_nan=True
+        )
+
+        assert np.allclose(
+            bw.stats("1", 0, 20, "mean", 5, numpy=True),
+            np.array(bw.stats("1", 0, 20, "mean", 5), dtype=np.float64),
+            equal_nan=True
+        )
