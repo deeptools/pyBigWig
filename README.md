@@ -7,6 +7,7 @@ Table of Contents
 =================
 
   * [Installation](#installation)
+    * [Requirements](#requirements)
   * [Usage](#usage)
     * [Load the extension](#load-the-extension)
     * [Open a bigWig or bigBed file](#open-a-bigwig-or-bigbed-file)
@@ -34,9 +35,16 @@ You can install this extension directly from github with:
 
 or with conda
 
-    conda install pybigwig -c bioconda
+    conda install pybigwig -c conda-forge -c bioconda
 
-Note that libcurl (and the `curl-config` command) are required for installation. This is typically already installed on many Linux and OSX systems (if you install with conda then this will happen automatically).
+## Requirements
+
+The follow non-python requirements must be installed:
+
+ - libcurl (and the `curl-config` config)
+ - zlib
+
+The headers and libraries for these are required.
 
 # Usage
 Basic usage is as follows:
