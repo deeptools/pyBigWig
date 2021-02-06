@@ -197,7 +197,8 @@ char *getNumpyStr(PyArrayObject *obj, Py_ssize_t i) {
 
 //Return 1 if there are any entries at all
 int hasEntries(bigWigFile_t *bw) {
-    if(bw->hdr->nBasesCovered > 0) return 1;
+    if(bw->hdr->indexOffset != 0) return 1;  // No index, no entries pyBigWig issue #111
+    //if(bw->hdr->nBasesCovered > 0) return 1;  // Sometimes headers are broken
     return 0;
 }
 

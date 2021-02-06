@@ -371,7 +371,7 @@ bigWigFile_t *bwOpen(char *fname, CURLcode (*callBack) (CURL*), const char *mode
         }
 
         //Read in the index
-        if(bwg->hdr->nBasesCovered) {
+        if(bwg->hdr->indexOffset) {
             bwg->idx = bwReadIndex(bwg, 0);
             if(!bwg->idx) {
                 fprintf(stderr, "[bwOpen] bwg->idx is NULL bwg->hdr->dataOffset 0x%"PRIx64"!\n", bwg->hdr->dataOffset);
