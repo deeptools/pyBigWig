@@ -1,3 +1,6 @@
+#ifndef LIBBIGWIG_H
+#define LIBBIGWIG_H
+
 #include "bigWigIO.h"
 #include "bwValues.h"
 #include <inttypes.h>
@@ -53,15 +56,18 @@ extern "C" {
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.4.4
+#define LIBBIGWIG_VERSION 0.4.6
 
 /*!
  * If 1, then this library was compiled with remote file support.
  */
 #ifdef NOCURL
 #define LIBBIGWIG_CURL 0
+#ifndef CURLTYPE_DEFINED
+#define CURLTYPE_DEFINED
 typedef int CURLcode;
 typedef void CURL;
+#endif
 #else
 #define LIBBIGWIG_CURL 1
 #endif
@@ -596,3 +602,5 @@ int bwAppendIntervalSpanSteps(bigWigFile_t *fp, float *values, uint32_t n);
 #ifdef __cplusplus
 }
 #endif
+
+#endif // LIBBIGWIG_H

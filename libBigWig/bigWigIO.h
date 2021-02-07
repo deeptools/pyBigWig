@@ -1,9 +1,15 @@
+#ifndef LIBBIGWIG_IO_H
+#define LIBBIGWIG_IO_H
+
 #ifndef NOCURL
 #include <curl/curl.h>
 #else
 #include <stdio.h>
+#ifndef CURLTYPE_DEFINED
+#define CURLTYPE_DEFINED
 typedef int CURLcode;
 typedef void CURL;
+#endif
 #define CURLE_OK 0
 #define CURLE_FAILED_INIT 1
 #endif
@@ -100,3 +106,5 @@ URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*), const char* mode);
  *  @warning URL will no longer point to a valid location in memory!
  */
 void urlClose(URL_t *URL);
+
+#endif // LIBBIGWIG_IO_H

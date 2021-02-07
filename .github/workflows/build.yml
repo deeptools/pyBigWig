@@ -1,0 +1,20 @@
+on: pull_request
+jobs:
+  testLinux:
+    name: TestLinux
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: foo
+          environment-file: .environmentLinux.yaml
+          python-version: 3.8
+          auto-activate-base: false
+      - run: |
+          CFLAGS="$CFLAGS -g -Wall -O3 -Wsign-compare"
+          LIBS="$LDFLAGS -lcurl -lm -lz"
+          make test CC=$CC CFLAGS="$CFLAGS" LIBS="$LIBS"
