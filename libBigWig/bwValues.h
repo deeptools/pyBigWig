@@ -1,3 +1,6 @@
+#ifndef LIBBIGWIG_VALUES_H
+#define LIBBIGWIG_VALUES_H
+
 #include <inttypes.h>
 /*! \file bwValues.h
  *
@@ -70,3 +73,5 @@ typedef struct {
     uint8_t type; /**<The block type: 1, bedGraph; 2, variable step; 3, fixed step.*/
     uint16_t nItems; /**<The number of values in a given block.*/
 } bwDataHeader_t;
+
+#endif // LIBBIGWIG_VALUES_H
