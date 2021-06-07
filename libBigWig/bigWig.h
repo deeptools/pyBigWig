@@ -105,7 +105,6 @@ enum bwStatsType {
     mean = 0, /*!< The mean value */
     average = 0, /*!< The mean value */
     stdev = 1, /*!< The standard deviation of the values */
-    dev = 1, /*!< The standard deviation of the values */
     max = 2, /*!< The maximum value */
     min = 3, /*!< The minimum value */
     cov = 4, /*!< The number of bases covered */

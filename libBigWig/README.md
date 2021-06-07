@@ -45,7 +45,7 @@ The only functions and structures that end users need to care about are in "bigW
 
         //Get an example statistic - standard deviation
         //We want ~4 bins in the range
-        stats = bwStats(fp, "chr1", 10000000, 10000100, 4, dev);
+        stats = bwStats(fp, "chr1", 10000000, 10000100, 4, std);
         if(stats) {
             printf("chr1:10000000-10000100 std. dev.: %f %f %f %f\n", stats[0], stats[1], stats[2], stats[3]);
             free(stats);
