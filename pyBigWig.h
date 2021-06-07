@@ -131,7 +131,7 @@ Positional arguments:\n\
 Keyword arguments:\n\
     start: Starting position\n\
     end:   Ending position\n\
-    type:  Summary type (mean, min, max, coverage, std), default 'mean'.\n\
+    type:  Summary type (mean, min, max, coverage, std, sum), default 'mean'.\n\
     nBins: Number of bins into which the range should be divided before\n\
            computing summary statistics. The default is 1.\n\
     exact: By default, pyBigWig uses the same method as Kent's tools from UCSC\n\
