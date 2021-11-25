@@ -213,7 +213,7 @@ If you only need to know where entries are and not their associated values, you 
 
 ## Add a header to a bigWig file
 
-If you've opened a file for writing then you'll need to give it a header before you can add any entries. The header contains all of the chromosomes, **in order**, and their sizes. If your chromosome has two chromosomes, chr1 and chr2, of lengths 1 and 1.5 million bases, then the following would add an appropriate header:
+If you've opened a file for writing then you'll need to give it a header before you can add any entries. The header contains all of the chromosomes, **in order**, and their sizes. If your genome has two chromosomes, chr1 and chr2, of lengths 1 and 1.5 million bases, then the following would add an appropriate header:
 
     >>> bw.addHeader([("chr1", 1000000), ("chr2", 1500000)])
 
