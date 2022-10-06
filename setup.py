@@ -86,5 +86,6 @@ setup(name = 'pyBigWig',
                      "Operating System :: MacOS"],
        packages = find_packages(),
        include_package_data = True,
-       extras_require = {'numpy input': ["numpy"]},
+       install_requires=["numpy[numpy]"],
+       extras_require = {'numpy': ["numpy"]},
        ext_modules = [module1])
