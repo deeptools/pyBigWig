@@ -1,5 +1,5 @@
 name: pypi
-on: [pull_request]
+on: [push]
 jobs:
   pypi:
     name: upload to pypi
