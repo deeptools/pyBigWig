@@ -34,12 +34,13 @@ text = "MIT"
 
 [tool.setuptools]
 # Override setuptools autodiscovery algorithm
-# Remove all package data/source specifically from wheel distribution
-include-package-data = false
-packages = []
+# Only include package test data/source for wheel distribution
+include-package-data = true
+packages = ["pyBigWigTest"]
 
 # Enable version inference from scm
 [tool.setuptools_scm]
 
+# Target only minimum CPython version 3.7 on linux for wheel build
 [tool.cibuildwheel]
 build = "cp37-manylinux_x86_64"
