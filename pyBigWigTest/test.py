@@ -268,7 +268,7 @@ class TestNumpy():
         # Type 1, single chrom, multiple starts/values, single span
         starts = np.array([200, 210, 220, 230, 240, 250, 260, 270, 280, 290], dtype=np.int64)
         values2 = np.array(np.random.random_sample(10), dtype=np.float64)
-        bw.addEntries("1", starts, span=np.int(8), values=values2)
+        bw.addEntries("1", starts, span=np.int64(8), values=values2)
 
         starts = np.array([300, 310, 320, 330, 340, 350, 360, 370, 380, 390], dtype=np.int64)
         values3 = np.array(np.random.random_sample(10), dtype=np.float64)
