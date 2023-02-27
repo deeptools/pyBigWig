@@ -276,10 +276,10 @@ class TestNumpy():
 
         # Type 2, single chrom/start/span/step, multiple values
         values4 = np.array(np.random.random_sample(10), dtype=np.float64)
-        bw.addEntries("1", np.int(400), span=np.int64(8), step=np.int64(2), values=values4)
+        bw.addEntries("1", np.int4(400), span=np.int64(8), step=np.int64(2), values=values4)
 
         values5 = np.array(np.random.random_sample(10), dtype=np.float64)
-        bw.addEntries("1", np.int(500), span=np.int64(8), step=np.int64(2), values=values5)
+        bw.addEntries("1", np.int4(500), span=np.int64(8), step=np.int64(2), values=values5)
 
         bw.close()
 
