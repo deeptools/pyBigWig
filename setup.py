@@ -1,15 +1,10 @@
 #!/usr/bin/env python
-from setuptools import setup, Extension, find_packages
+from setuptools import setup, Extension
 from distutils import sysconfig
+from pathlib import Path
 import subprocess
 import glob
 import sys
-try:
-    from numpy.distutils.misc_util import get_info
-    from os.path import dirname
-    WITHNUMPY = True
-except:
-    WITHNUMPY = False
 
 srcs = [x for x in 
     glob.glob("libBigWig/*.c")]
@@ -46,13 +41,22 @@ for v in foo:
         additional_libs.append(v[2:])
 
 include_dirs = ['libBigWig', sysconfig.get_config_var("INCLUDEPY")]
-if WITHNUMPY is True:
+
+# Add numpy build information if numpy is installed as a package
+try:
+    import numpy
     defines.extend([('WITHNUMPY', None), ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')])
-    extra_info = get_info('npymath')
-    include_dirs.extend(extra_info['include_dirs'])
-    libs.extend(extra_info['libraries'])
-    extra_info['library_dirs'].extend(additional_libs)
-    additional_libs = extra_info['library_dirs']
+
+    # Ref: https://numpy.org/doc/stable/reference/c-api/coremath.html#linking-against-the-core-math-library-in-an-extension
+    numpy_include_dir = numpy.get_include()
+    numpy_library_dir = str(Path(numpy_include_dir) / '..' / 'lib')
+
+    include_dirs.append(numpy_include_dir)
+    additional_libs.append(numpy_library_dir)
+    libs.append('npymath')
+# Silently ignore a failed import of numpy
+except ImportError:
+    pass
 
 module1 = Extension('pyBigWig',
                     sources = srcs,
@@ -61,30 +65,6 @@ module1 = Extension('pyBigWig',
                     define_macros = defines,
                     include_dirs = include_dirs)
 
-setup(name = 'pyBigWig',
-       version = '0.3.18',
-       description = 'A package for accessing bigWig files using libBigWig',
-       author = "Devon P. Ryan",
-       author_email = "ryan@ie-freiburg.mpg.de",
-       url = "https://github.com/dpryan79/pyBigWig",
-       download_url = "https://github.com/dpryan79/pyBigWig/tarball/0.3.13",
-       keywords = ["bioinformatics", "bigWig", "bigBed"],
-       classifier = ["Development Status :: 5 - Production/Stable",
-                     "Intended Audience :: Developers",
-                     "License :: OSI Approved",
-                     "Programming Language :: C",
-                     "Programming Language :: Python",
-                     "Programming Language :: Python :: 2",
-                     "Programming Language :: Python :: 2.7",
-                     "Programming Language :: Python :: 3",
-                     "Programming Language :: Python :: 3.5",
-                     "Programming Language :: Python :: 3.6",
-                     "Programming Language :: Python :: 3.7",
-                     "Programming Language :: Python :: Implementation :: CPython",
-                     "Operating System :: POSIX",
-                     "Operating System :: Unix",
-                     "Operating System :: MacOS"],
-       packages = find_packages(),
-       include_package_data = True,
-       extras_require = {'numpy input': ["numpy"]},
-       ext_modules = [module1])
+setup(
+    ext_modules=[module1]
+)

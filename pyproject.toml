@@ -1,0 +1,46 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["oldest-supported-numpy", "setuptools", "setuptools-scm"]
+
+[project]
+authors = [{name = "Devon P. Ryan", email = "ryan@ie-freiburg.mpg.de"}]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved",
+  "Programming Language :: C",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Operating System :: MacOS",
+]
+description = "A package for accessing bigWig files using libBigWig"
+dynamic = ["version"]
+keywords = ["bioinformatics", "bigWig", "bigBed"]
+name = "pyBigWig"
+readme = "README.md"
+requires-python = ">=3.7"
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+"Bug Tracker" = "https://github.com/deeptools/pyBigWig/issues"
+"Download" = "https://pypi.python.org/pypi/pyBigWig"
+"Homepage" = "https://github.com/deeptools/pyBigWig"
+
+[tool.setuptools]
+# Override setuptools autodiscovery algorithm
+# Only include package test data/source for wheel distribution
+include-package-data = true
+packages = ["pyBigWigTest"]
+
+# Enable version inference from scm
+[tool.setuptools_scm]
+
+# Target only minimum CPython version 3.7 on linux for wheel build
+[tool.cibuildwheel]
+build = "cp37-manylinux_x86_64"
