@@ -268,18 +268,18 @@ class TestNumpy():
         # Type 1, single chrom, multiple starts/values, single span
         starts = np.array([200, 210, 220, 230, 240, 250, 260, 270, 280, 290], dtype=np.int64)
         values2 = np.array(np.random.random_sample(10), dtype=np.float64)
-        bw.addEntries(np.str("1"), starts, span=np.int(8), values=values2)
+        bw.addEntries("1", starts, span=np.int(8), values=values2)
 
         starts = np.array([300, 310, 320, 330, 340, 350, 360, 370, 380, 390], dtype=np.int64)
         values3 = np.array(np.random.random_sample(10), dtype=np.float64)
-        bw.addEntries(np.str("1"), starts, span=np.int(8), values=values3)
+        bw.addEntries("1", starts, span=np.int(8), values=values3)
 
         # Type 2, single chrom/start/span/step, multiple values
         values4 = np.array(np.random.random_sample(10), dtype=np.float64)
-        bw.addEntries(np.str("1"), np.int(400), span=np.int(8), step=np.int64(2), values=values4)
+        bw.addEntries("1", np.int(400), span=np.int(8), step=np.int64(2), values=values4)
 
         values5 = np.array(np.random.random_sample(10), dtype=np.float64)
-        bw.addEntries(np.str("1"), np.int(500), span=np.int(8), step=np.int64(2), values=values5)
+        bw.addEntries("1", np.int(500), span=np.int(8), step=np.int64(2), values=values5)
 
         bw.close()
 
