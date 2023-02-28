@@ -20,6 +20,7 @@ classifiers = [
 description = "A package for accessing bigWig files using libBigWig"
 keywords = ["bioinformatics", "bigWig", "bigBed"]
 name = "pyBigWig"
+version = "0.3.19"
 readme = "README.md"
 requires-python = ">=3.7"
 
