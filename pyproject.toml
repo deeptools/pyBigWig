@@ -20,7 +20,7 @@ classifiers = [
 description = "A package for accessing bigWig files using libBigWig"
 keywords = ["bioinformatics", "bigWig", "bigBed"]
 name = "pyBigWig"
-version = "0.3.21"
+version = "0.3.22"
 readme = "README.md"
 requires-python = ">=3.7"
 
@@ -43,4 +43,7 @@ packages = ["pyBigWigTest"]
 
 # Target only minimum CPython version 3.7 on linux for wheel build
 [tool.cibuildwheel]
-build = "cp37-manylinux_x86_64"
+skip = "pp* cp36-* *-manylinux_i686 *_ppc64le *_s390x *-musllinux_x86_64 *-musllinux_i686"
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux2014"
