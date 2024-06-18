@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["oldest-supported-numpy", "setuptools", "setuptools-scm"]
+requires = ["numpy >= 2.0.0", "setuptools", "setuptools-scm"]
 
 [project]
 authors = [{name = "Devon P. Ryan", email = "dryan79@gmail.com"}]
@@ -11,7 +11,7 @@ classifiers = [
   "Programming Language :: C",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: Implementation :: CPython",
   "Operating System :: POSIX",
   "Operating System :: Unix",
@@ -20,9 +20,9 @@ classifiers = [
 description = "A package for accessing bigWig files using libBigWig"
 keywords = ["bioinformatics", "bigWig", "bigBed"]
 name = "pyBigWig"
-version = "0.3.22"
+version = "0.3.23"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 
 [project.license]
 text = "MIT"
@@ -41,9 +41,9 @@ packages = ["pyBigWigTest"]
 # Enable version inference from scm
 [tool.setuptools_scm]
 
-# Target only minimum CPython version 3.7 on linux for wheel build
+# Target only minimum CPython version 3.9 on linux for wheel build
 [tool.cibuildwheel]
-skip = "pp* cp36-* *-manylinux_i686 *_ppc64le *_s390x *-musllinux_x86_64 *-musllinux_i686"
+skip = "pp* cp38-* *-manylinux_i686 *_ppc64le *_s390x *-musllinux_x86_64 *-musllinux_i686"
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux2014"
