@@ -894,7 +894,7 @@ PyObject *pyBwAddHeader(pyBigWigFile_t *self, PyObject *args, PyObject *kwds) {
     }
 
     //Create the chromosome list
-    bw->cl = bwCreateChromList(chroms, lengths, n);
+    bw->cl = bwCreateChromList((const char * const*)chroms, lengths, n);
     if(!bw->cl) {
         PyErr_SetString(PyExc_RuntimeError, "Received an error in bwCreateChromList");
         goto error;
@@ -1248,7 +1248,7 @@ int PyAddIntervals(pyBigWigFile_t *self, PyObject *chroms, PyObject *starts, PyO
         if(PyErr_Occurred()) goto error;
     }
 
-    rv = bwAddIntervals(bw, cchroms, ustarts, uends, fvalues, n);
+    rv = bwAddIntervals(bw, (const char * const*)cchroms, ustarts, uends, fvalues, n);
     if(!rv) {
         self->lastTid = bwGetTid(bw, cchroms[n-1]);
         self->lastStart = uends[n-1];
