@@ -116,9 +116,10 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
                 if(!v) goto error;
             }
             if(vstart > end) break;
-        } else if(vtid > tid) {
-            break;
         }
+        /* else if(vtid > tid) {
+            continue;
+        }*/
         p+=8;
     }
 
