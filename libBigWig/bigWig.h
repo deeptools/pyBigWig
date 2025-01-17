@@ -56,7 +56,7 @@ extern "C" {
 /*!
  * The library version number
  */
-#define LIBBIGWIG_VERSION 0.4.6
+#define LIBBIGWIG_VERSION 0.4.8
 
 /*!
  * If 1, then this library was compiled with remote file support.
@@ -279,7 +279,7 @@ void bwCleanup(void);
  * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information. See `test/testRemote` for an example.
  * @return 1 if the file appears to be bigWig, otherwise 0.
  */
-int bwIsBigWig(char *fname, CURLcode (*callBack)(CURL*));
+int bwIsBigWig(const char *fname, CURLcode (*callBack)(CURL*));
 
 /*!
  * @brief Determine is a file is a bigBed file.
@@ -288,7 +288,7 @@ int bwIsBigWig(char *fname, CURLcode (*callBack)(CURL*));
  * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information. See `test/testRemote` for an example.
  * @return 1 if the file appears to be bigWig, otherwise 0.
  */
-int bbIsBigBed(char *fname, CURLcode (*callBack)(CURL*));
+int bbIsBigBed(const char *fname, CURLcode (*callBack)(CURL*));
 
 /*!
  * @brief Opens a local or remote bigWig file.
@@ -298,7 +298,7 @@ int bbIsBigBed(char *fname, CURLcode (*callBack)(CURL*));
  * @param mode The mode, by default "r". Both local and remote files can be read, but only local files can be written. For files being written the callback function is ignored. If and only if the mode contains "w" will the file be opened for writing (in all other cases the file will be opened for reading.
  * @return A bigWigFile_t * on success and NULL on error.
  */
-bigWigFile_t *bwOpen(char *fname, CURLcode (*callBack)(CURL*), const char* mode);
+bigWigFile_t *bwOpen(const char *fname, CURLcode (*callBack)(CURL*), const char* mode);
 
 /*!
  * @brief Opens a local or remote bigBed file.
@@ -307,7 +307,7 @@ bigWigFile_t *bwOpen(char *fname, CURLcode (*callBack)(CURL*), const char* mode)
  * @param callBack An optional user-supplied function. This is applied to remote connections so users can specify things like proxy and password information. See `test/testRemote` for an example.
  * @return A bigWigFile_t * on success and NULL on error.
  */
-bigWigFile_t *bbOpen(char *fname, CURLcode (*callBack)(CURL*));
+bigWigFile_t *bbOpen(const char *fname, CURLcode (*callBack)(CURL*));
 
 /*!
  * @brief Returns a string containing the SQL entry (or NULL).
@@ -339,7 +339,7 @@ void bwClose(bigWigFile_t *fp);
  * @param chrom A chromosome name
  * @return An ID, -1 will be returned on error (note that this is an unsigned value, so that's ~4 billion. bigWig/bigBed files can't store that many chromosomes anyway.
  */
-uint32_t bwGetTid(bigWigFile_t *fp, char *chrom);
+uint32_t bwGetTid(const bigWigFile_t *fp, const char *chrom);
 
 /*!
  * @brief Frees space allocated by `bwGetOverlappingIntervals`
@@ -367,7 +367,7 @@ void bbDestroyOverlappingEntries(bbOverlappingEntries_t *o);
  * @see bwDestroyOverlappingIntervals
  * @see bwGetValues
  */
-bwOverlappingIntervals_t *bwGetOverlappingIntervals(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end);
+bwOverlappingIntervals_t *bwGetOverlappingIntervals(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end);
 
 /*!
  * @brief Return bigBed entries overlapping an interval.
@@ -381,7 +381,7 @@ bwOverlappingIntervals_t *bwGetOverlappingIntervals(bigWigFile_t *fp, char *chro
  * @see bbOverlappingEntries_t
  * @see bbDestroyOverlappingEntries
  */
-bbOverlappingEntries_t *bbGetOverlappingEntries(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, int withString);
+bbOverlappingEntries_t *bbGetOverlappingEntries(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, int withString);
 
 /*!
  * @brief Creates an iterator over intervals in a bigWig file
@@ -397,7 +397,7 @@ bbOverlappingEntries_t *bbGetOverlappingEntries(bigWigFile_t *fp, char *chrom, u
  * @see bwIteratorNext
  * @see bwIteratorDestroy
  */ 
-bwOverlapIterator_t *bwOverlappingIntervalsIterator(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t blocksPerIteration);
+bwOverlapIterator_t *bwOverlappingIntervalsIterator(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, uint32_t blocksPerIteration);
 
 /*!
  * @brief Creates an iterator over entries in a bigBed file
@@ -415,7 +415,7 @@ bwOverlapIterator_t *bwOverlappingIntervalsIterator(bigWigFile_t *fp, char *chro
  * @see bwIteratorNext
  * @see bwIteratorDestroy
  */ 
-bwOverlapIterator_t *bbOverlappingEntriesIterator(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, int withString, uint32_t blocksPerIteration);
+bwOverlapIterator_t *bbOverlappingEntriesIterator(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, int withString, uint32_t blocksPerIteration);
 
 /*!
  * @brief Traverses to the entries/intervals in the next group of blocks.
@@ -445,7 +445,7 @@ void bwIteratorDestroy(bwOverlapIterator_t *iter);
  * @see bwDestroyOverlappingIntervals
  * @see bwGetOverlappingIntervals
  */
-bwOverlappingIntervals_t *bwGetValues(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, int includeNA);
+bwOverlappingIntervals_t *bwGetValues(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, int includeNA);
 
 /*!
  * @brief Determines per-interval bigWig statistics
@@ -459,7 +459,7 @@ bwOverlappingIntervals_t *bwGetValues(bigWigFile_t *fp, char *chrom, uint32_t st
  * @see bwStatsType
  * @return A pointer to an array of double precission floating point values. Note that bigWig files only hold 32-bit values, so this is done to help prevent overflows.
  */
-double *bwStats(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type);
+double *bwStats(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type);
 
 /*!
  * @brief Determines per-interval bigWig statistics
@@ -473,7 +473,7 @@ double *bwStats(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uin
  * @see bwStatsType
  * @return A pointer to an array of double precission floating point values. Note that bigWig files only hold 32-bit values, so this is done to help prevent overflows.
 */
-double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type);
+double *bwStatsFromFull(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type);
 
 //Writer functions
 
@@ -494,7 +494,7 @@ int bwCreateHdr(bigWigFile_t *fp, int32_t maxZooms);
  * @param n The number of chromosomes (thus, the length of `chroms` and `lengths`)
  * @return A pointer to a chromList_t or NULL on error.
  */
-chromList_t *bwCreateChromList(char **chroms, uint32_t *lengths, int64_t n);
+chromList_t *bwCreateChromList(const char* const* chroms, const uint32_t *lengths, int64_t n);
 
 /*!
  * @brief Write a the header to a bigWig file.
@@ -521,7 +521,7 @@ int bwWriteHdr(bigWigFile_t *bw);
  * @return 0 on success and another value on error.
  * @see bwAppendIntervals
  */
-int bwAddIntervals(bigWigFile_t *fp, char **chrom, uint32_t *start, uint32_t *end, float *values, uint32_t n);
+int bwAddIntervals(bigWigFile_t *fp, const char* const* chrom, const uint32_t *start, const uint32_t *end, const float *values, uint32_t n);
 
 /*!
  * @brief Append bedGraph-like intervals to a previous block of bedGraph-like intervals in a bigWig file.
@@ -535,7 +535,7 @@ int bwAddIntervals(bigWigFile_t *fp, char **chrom, uint32_t *start, uint32_t *en
  * @warning Do NOT use this after `bwAddIntervalSpanSteps()`, `bwAppendIntervalSpanSteps()`, `bwAddIntervalSpanSteps()`, or `bwAppendIntervalSpanSteps()`.
  * @see bwAddIntervals
  */
-int bwAppendIntervals(bigWigFile_t *fp, uint32_t *start, uint32_t *end, float *values, uint32_t n);
+int bwAppendIntervals(bigWigFile_t *fp, const uint32_t *start, const uint32_t *end, const float *values, uint32_t n);
 
 /*!
  * @brief Add a new block of variable-step entries to a bigWig file
@@ -553,7 +553,7 @@ int bwAppendIntervals(bigWigFile_t *fp, uint32_t *start, uint32_t *end, float *v
  * @return 0 on success and another value on error.
  * @see bwAppendIntervalSpans
  */
-int bwAddIntervalSpans(bigWigFile_t *fp, char *chrom, uint32_t *start, uint32_t span, float *values, uint32_t n);
+int bwAddIntervalSpans(bigWigFile_t *fp, const char *chrom, const uint32_t *start, uint32_t span, const float *values, uint32_t n);
 
 /*!
  * @brief Append to a previous block of variable-step entries.
@@ -566,7 +566,7 @@ int bwAddIntervalSpans(bigWigFile_t *fp, char *chrom, uint32_t *start, uint32_t 
  * @warning Do NOT use this after `bwAddIntervals()`, `bwAppendIntervals()`, `bwAddIntervalSpanSteps()` or `bwAppendIntervalSpanSteps()`
  * @see bwAddIntervalSpans
  */
-int bwAppendIntervalSpans(bigWigFile_t *fp, uint32_t *start, float *values, uint32_t n);
+int bwAppendIntervalSpans(bigWigFile_t *fp, const uint32_t *start, const float *values, uint32_t n);
 
 /*!
  * @brief Add a new block of fixed-step entries to a bigWig file
@@ -585,7 +585,7 @@ int bwAppendIntervalSpans(bigWigFile_t *fp, uint32_t *start, float *values, uint
  * @return 0 on success and another value on error.
  * @see bwAddIntervalSpanSteps
  */
-int bwAddIntervalSpanSteps(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t span, uint32_t step, float *values, uint32_t n);
+int bwAddIntervalSpanSteps(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t span, uint32_t step, const float *values, uint32_t n);
 
 /*!
  * @brief Append to a previous block of fixed-step entries.
@@ -597,7 +597,7 @@ int bwAddIntervalSpanSteps(bigWigFile_t *fp, char *chrom, uint32_t start, uint32
  * @warning Do NOT use this after `bwAddIntervals()`, `bwAppendIntervals()`, `bwAddIntervalSpans()` or `bwAppendIntervalSpans()`
  * @see bwAddIntervalSpanSteps
  */
-int bwAppendIntervalSpanSteps(bigWigFile_t *fp, float *values, uint32_t n);
+int bwAppendIntervalSpanSteps(bigWigFile_t *fp, const float *values, uint32_t n);
 
 #ifdef __cplusplus
 }

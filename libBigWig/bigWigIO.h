@@ -49,7 +49,7 @@ typedef struct {
     size_t bufLen; /**<The actual size of the buffer used.*/
     enum bigWigFile_type_enum type; /**<The connection type*/
     int isCompressed; /**<1 if the file is compressed, otherwise 0*/
-    char *fname; /**<Only needed for remote connections. The original URL/filename requested, since we need to make multiple connections.*/
+    const char *fname; /**<Only needed for remote connections. The original URL/filename requested, since we need to make multiple connections.*/
 } URL_t;
 
 /*!
@@ -94,7 +94,7 @@ CURLcode urlSeek(URL_t *URL, size_t pos);
  *
  *  @return A URL_t * or NULL on error.
  */
-URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*), const char* mode);
+URL_t *urlOpen(const char *fname, CURLcode (*callBack)(CURL*), const char* mode);
 
 /*!
  *  @brief Close a local/remote file

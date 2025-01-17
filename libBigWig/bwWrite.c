@@ -19,7 +19,7 @@ struct val_t {
 
 //Create a chromList_t and attach it to a bigWigFile_t *. Returns NULL on error
 //Note that chroms and lengths are duplicated, so you MUST free the input
-chromList_t *bwCreateChromList(char **chroms, uint32_t *lengths, int64_t n) {
+chromList_t *bwCreateChromList(const char* const* chroms, const uint32_t *lengths, int64_t n) {
     int64_t i = 0;
     chromList_t *cl = calloc(1, sizeof(chromList_t));
     if(!cl) return NULL;
@@ -32,7 +32,7 @@ chromList_t *bwCreateChromList(char **chroms, uint32_t *lengths, int64_t n) {
 
     for(i=0; i<n; i++) {
         cl->len[i] = lengths[i];
-        cl->chrom[i] = strdup(chroms[i]);
+        cl->chrom[i] = bwStrdup(chroms[i]);
         if(!cl->chrom[i]) goto error;
     }
 
@@ -188,7 +188,8 @@ int bwWriteHdr(bigWigFile_t *bw) {
     uint32_t magic = BIGWIG_MAGIC;
     uint16_t two = 4;
     FILE *fp;
-    void *p = calloc(58, sizeof(uint8_t)); //58 bytes of nothing
+    const uint8_t pbuff[58] = {0}; // 58 bytes of nothing
+    const void *p = (const void *)&pbuff;
     if(!bw->isWrite) return 1;
 
     //The header itself, largely just reserving space...
@@ -223,7 +224,6 @@ int bwWriteHdr(bigWigFile_t *bw) {
     //Save space for the number of blocks
     if(fwrite(p, sizeof(uint8_t), 8, fp) != 8) return 13;
 
-    free(p);
     return 0;
 }
 
@@ -317,12 +317,12 @@ static int flushBuffer(bigWigFile_t *fp) {
     if(!wb->ltype) return 0;
 
     //Fill in the header
-    if(!memcpy(wb->p, &(wb->tid), sizeof(uint32_t))) return 1;
-    if(!memcpy(wb->p+4, &(wb->start), sizeof(uint32_t))) return 2;
-    if(!memcpy(wb->p+8, &(wb->end), sizeof(uint32_t))) return 3;
-    if(!memcpy(wb->p+12, &(wb->step), sizeof(uint32_t))) return 4;
-    if(!memcpy(wb->p+16, &(wb->span), sizeof(uint32_t))) return 5;
-    if(!memcpy(wb->p+20, &(wb->ltype), sizeof(uint8_t))) return 6;
+    if(!memcpy((char*)wb->p, &(wb->tid), sizeof(uint32_t))) return 1;
+    if(!memcpy((char*)wb->p+4, &(wb->start), sizeof(uint32_t))) return 2;
+    if(!memcpy((char*)wb->p+8, &(wb->end), sizeof(uint32_t))) return 3;
+    if(!memcpy((char*)wb->p+12, &(wb->step), sizeof(uint32_t))) return 4;
+    if(!memcpy((char*)wb->p+16, &(wb->span), sizeof(uint32_t))) return 5;
+    if(!memcpy((char*)wb->p+20, &(wb->ltype), sizeof(uint8_t))) return 6;
     //1 byte padding
     //Determine the number of items
     switch(wb->ltype) {
@@ -338,7 +338,7 @@ static int flushBuffer(bigWigFile_t *fp) {
     default:
         return 7;
     }
-    if(!memcpy(wb->p+22, &nItems, sizeof(uint16_t))) return 8;
+    if(!memcpy((char*)wb->p+22, &nItems, sizeof(uint16_t))) return 8;
 
     if(sz) {
         //compress
@@ -371,9 +371,9 @@ static void updateStats(bigWigFile_t *fp, uint32_t span, float val) {
 }
 
 //12 bytes per entry
-int bwAddIntervals(bigWigFile_t *fp, char **chrom, uint32_t *start, uint32_t *end, float *values, uint32_t n) {
+int bwAddIntervals(bigWigFile_t *fp, const char* const* chrom, const uint32_t *start, const uint32_t *end, const float *values, uint32_t n) {
     uint32_t tid = 0, i;
-    char *lastChrom = NULL;
+    const char *lastChrom = NULL;
     bwWriteBuffer_t *wb = fp->writeBuffer;
     if(!n) return 0; //Not an error per se
     if(!fp->isWrite) return 1;
@@ -399,9 +399,9 @@ int bwAddIntervals(bigWigFile_t *fp, char **chrom, uint32_t *start, uint32_t *en
         wb->span = 0;
         wb->step = 0;
     }
-    if(!memcpy(wb->p+wb->l, start, sizeof(uint32_t))) return 7;
-    if(!memcpy(wb->p+wb->l+4, end, sizeof(uint32_t))) return 8;
-    if(!memcpy(wb->p+wb->l+8, values, sizeof(float))) return 9;
+    if(!memcpy((char*)wb->p+wb->l, start, sizeof(uint32_t))) return 7;
+    if(!memcpy((char*)wb->p+wb->l+4, end, sizeof(uint32_t))) return 8;
+    if(!memcpy((char*)wb->p+wb->l+8, values, sizeof(float))) return 9;
     updateStats(fp, end[0]-start[0], values[0]);
     wb->l += 12;
 
@@ -420,9 +420,9 @@ int bwAddIntervals(bigWigFile_t *fp, char **chrom, uint32_t *start, uint32_t *en
             flushBuffer(fp);
             wb->start = start[i];
         }
-        if(!memcpy(wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 11;
-        if(!memcpy(wb->p+wb->l+4, &(end[i]), sizeof(uint32_t))) return 12;
-        if(!memcpy(wb->p+wb->l+8, &(values[i]), sizeof(float))) return 13;
+        if(!memcpy((char*)wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 11;
+        if(!memcpy((char*)wb->p+wb->l+4, &(end[i]), sizeof(uint32_t))) return 12;
+        if(!memcpy((char*)wb->p+wb->l+8, &(values[i]), sizeof(float))) return 13;
         updateStats(fp, end[i]-start[i], values[i]);
         wb->l += 12;
     }
@@ -431,7 +431,7 @@ int bwAddIntervals(bigWigFile_t *fp, char **chrom, uint32_t *start, uint32_t *en
     return 0;
 }
 
-int bwAppendIntervals(bigWigFile_t *fp, uint32_t *start, uint32_t *end, float *values, uint32_t n) {
+int bwAppendIntervals(bigWigFile_t *fp, const uint32_t *start, const uint32_t *end, const float *values, uint32_t n) {
     uint32_t i;
     bwWriteBuffer_t *wb = fp->writeBuffer;
     if(!n) return 0;
@@ -447,9 +447,9 @@ int bwAppendIntervals(bigWigFile_t *fp, uint32_t *start, uint32_t *end, float *v
             flushBuffer(fp);
             wb->start = start[i];
         }
-        if(!memcpy(wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 4;
-        if(!memcpy(wb->p+wb->l+4, &(end[i]), sizeof(uint32_t))) return 5;
-        if(!memcpy(wb->p+wb->l+8, &(values[i]), sizeof(float))) return 6;
+        if(!memcpy((char*)wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 4;
+        if(!memcpy((char*)wb->p+wb->l+4, &(end[i]), sizeof(uint32_t))) return 5;
+        if(!memcpy((char*)wb->p+wb->l+8, &(values[i]), sizeof(float))) return 6;
         updateStats(fp, end[i]-start[i], values[i]);
         wb->l += 12;
     }
@@ -459,7 +459,7 @@ int bwAppendIntervals(bigWigFile_t *fp, uint32_t *start, uint32_t *end, float *v
 }
 
 //8 bytes per entry
-int bwAddIntervalSpans(bigWigFile_t *fp, char *chrom, uint32_t *start, uint32_t span, float *values, uint32_t n) {
+int bwAddIntervalSpans(bigWigFile_t *fp, const char *chrom, const uint32_t *start, uint32_t span, const float *values, uint32_t n) {
     uint32_t i, tid;
     bwWriteBuffer_t *wb = fp->writeBuffer;
     if(!n) return 0;
@@ -482,8 +482,8 @@ int bwAddIntervalSpans(bigWigFile_t *fp, char *chrom, uint32_t *start, uint32_t 
             flushBuffer(fp);
             wb->start = start[i];
         }
-        if(!memcpy(wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 5;
-        if(!memcpy(wb->p+wb->l+4, &(values[i]), sizeof(float))) return 6;
+        if(!memcpy((char*)wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 5;
+        if(!memcpy((char*)wb->p+wb->l+4, &(values[i]), sizeof(float))) return 6;
         updateStats(fp, span, values[i]);
         wb->l += 8;
     }
@@ -492,7 +492,7 @@ int bwAddIntervalSpans(bigWigFile_t *fp, char *chrom, uint32_t *start, uint32_t 
     return 0;
 }
 
-int bwAppendIntervalSpans(bigWigFile_t *fp, uint32_t *start, float *values, uint32_t n) {
+int bwAppendIntervalSpans(bigWigFile_t *fp, const uint32_t *start, const float *values, uint32_t n) {
     uint32_t i;
     bwWriteBuffer_t *wb = fp->writeBuffer;
     if(!n) return 0;
@@ -506,8 +506,8 @@ int bwAppendIntervalSpans(bigWigFile_t *fp, uint32_t *start, float *values, uint
             flushBuffer(fp);
             wb->start = start[i];
         }
-        if(!memcpy(wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 4;
-        if(!memcpy(wb->p+wb->l+4, &(values[i]), sizeof(float))) return 5;
+        if(!memcpy((char*)wb->p+wb->l, &(start[i]), sizeof(uint32_t))) return 4;
+        if(!memcpy((char*)wb->p+wb->l+4, &(values[i]), sizeof(float))) return 5;
         updateStats(fp, wb->span, values[i]);
         wb->l += 8;
     }
@@ -517,7 +517,7 @@ int bwAppendIntervalSpans(bigWigFile_t *fp, uint32_t *start, float *values, uint
 }
 
 //4 bytes per entry
-int bwAddIntervalSpanSteps(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t span, uint32_t step, float *values, uint32_t n) {
+int bwAddIntervalSpanSteps(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t span, uint32_t step, const float *values, uint32_t n) {
     uint32_t i, tid;
     bwWriteBuffer_t *wb = fp->writeBuffer;
     if(!n) return 0;
@@ -540,7 +540,7 @@ int bwAddIntervalSpanSteps(bigWigFile_t *fp, char *chrom, uint32_t start, uint32
             flushBuffer(fp);
             wb->start = wb->end;
         }
-        if(!memcpy(wb->p+wb->l, &(values[i]), sizeof(float))) return 5;
+        if(!memcpy((char*)wb->p+wb->l, &(values[i]), sizeof(float))) return 5;
         updateStats(fp, wb->span, values[i]);
         wb->l += 4;
     }
@@ -549,7 +549,7 @@ int bwAddIntervalSpanSteps(bigWigFile_t *fp, char *chrom, uint32_t start, uint32
     return 0;
 }
 
-int bwAppendIntervalSpanSteps(bigWigFile_t *fp, float *values, uint32_t n) {
+int bwAppendIntervalSpanSteps(bigWigFile_t *fp, const float *values, uint32_t n) {
     uint32_t i;
     bwWriteBuffer_t *wb = fp->writeBuffer;
     if(!n) return 0;
@@ -563,7 +563,7 @@ int bwAppendIntervalSpanSteps(bigWigFile_t *fp, float *values, uint32_t n) {
             flushBuffer(fp);
             wb->start = wb->end;
         }
-        if(!memcpy(wb->p+wb->l, &(values[i]), sizeof(float))) return 4;
+        if(!memcpy((char*)wb->p+wb->l, &(values[i]), sizeof(float))) return 4;
         updateStats(fp, wb->span, values[i]);
         wb->l += 4;
     }
@@ -754,7 +754,7 @@ int writeIndex(bigWigFile_t *fp) {
     }
     if(!root) return 4;
     fp->idx->root = root;
-    
+
     ll = fp->writeBuffer->firstIndexNode;
     while(ll) {
         p = ll->next;
@@ -994,8 +994,8 @@ int addIntervalValue(bigWigFile_t *fp, uint64_t *nEntries, double *sum, double *
             newBuffer->p = calloc(itemsPerSlot, 32);
             if(!newBuffer->p) goto error;
             newBuffer->m = itemsPerSlot*32;
-            memcpy(newBuffer->p, buffer->p+buffer->l-32, 4);
-            memcpy(newBuffer->p+4, buffer->p+buffer->l-28, 4);
+            memcpy(newBuffer->p, (unsigned char*)buffer->p+buffer->l-32, 4);
+            memcpy((unsigned char*)newBuffer->p+4, (unsigned char*)buffer->p + buffer->l-28, 4);
             ((uint32_t*) newBuffer->p)[2] = ((uint32_t*) newBuffer->p)[1] + zoom;
             *sum = *sumsq = 0.0;
             rv = updateInterval(fp, newBuffer, sum, sumsq, zoom, tid, start, end, value);
@@ -1019,7 +1019,7 @@ error:
 
 //Get all of the intervals and add them to the appropriate zoomBuffer
 int constructZoomLevels(bigWigFile_t *fp) {
-    bwOverlappingIntervals_t *intervals = NULL;
+    bwOverlapIterator_t *it = NULL;
     double *sum = NULL, *sumsq = NULL;
     uint32_t i, j, k;
 
@@ -1028,15 +1028,19 @@ int constructZoomLevels(bigWigFile_t *fp) {
     if(!sum || !sumsq) goto error;
 
     for(i=0; i<fp->cl->nKeys; i++) {
-        intervals = bwGetOverlappingIntervals(fp, fp->cl->chrom[i], 0, fp->cl->len[i]);
-        if(!intervals) goto error;
-        for(j=0; j<intervals->l; j++) {
-            for(k=0; k<fp->hdr->nLevels; k++) {
-                if(addIntervalValue(fp, &(fp->writeBuffer->nNodes[k]), sum+k, sumsq+k, fp->writeBuffer->lastZoomBuffer[k], fp->hdr->bufSize/32, fp->hdr->zoomHdrs->level[k], i, intervals->start[j], intervals->end[j], intervals->value[j])) goto error;
-                while(fp->writeBuffer->lastZoomBuffer[k]->next) fp->writeBuffer->lastZoomBuffer[k] = fp->writeBuffer->lastZoomBuffer[k]->next;
-            }
-        }
-        bwDestroyOverlappingIntervals(intervals);
+        it = bwOverlappingIntervalsIterator(fp, fp->cl->chrom[i], 0, fp->cl->len[i], 100000);
+        if(!it) goto error;
+	while(it->data != NULL){
+	  for(j=0;j<it->intervals->l;j++){
+		for(k=0;k<fp->hdr->nLevels;k++){
+			if(addIntervalValue(fp, &(fp->writeBuffer->nNodes[k]), sum+k, sumsq+k, fp->writeBuffer->lastZoomBuffer[k], fp->hdr->bufSize/32, fp->hdr->zoomHdrs->level[k], i, it->intervals->start[j], it->intervals->end[j], it->intervals->value[j])) goto error;
+			while(fp->writeBuffer->lastZoomBuffer[k]->next) fp->writeBuffer->lastZoomBuffer[k] = fp->writeBuffer->lastZoomBuffer[k]->next;
+		}
+	  }
+	  it = bwIteratorNext(it);
+	}
+	bwIteratorDestroy(it);
+
     }
 
     //Make an index for each zoom level
@@ -1046,13 +1050,14 @@ int constructZoomLevels(bigWigFile_t *fp) {
         fp->hdr->zoomHdrs->idx[i]->blockSize = fp->writeBuffer->blockSize;
     }
 
+
     free(sum);
     free(sumsq);
 
     return 0;
 
 error:
-    if(intervals) bwDestroyOverlappingIntervals(intervals);
+    if(it) bwIteratorDestroy(it);
     if(sum) free(sum);
     if(sumsq) free(sumsq);
     return 1;
@@ -1117,7 +1122,7 @@ int writeZoomLevels(bigWigFile_t *fp) {
         while(ll) {
             p = ll->next;
             free(ll);
-            ll=p; 
+            ll=p;
         }
 
 

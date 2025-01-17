@@ -194,7 +194,7 @@ static uint64_t readChromLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t valueS
         if(bwRead((void*) chrom, sizeof(char), valueSize, bw) != valueSize) goto error;
         if(bwRead((void*) &idx, sizeof(uint32_t), 1, bw) != 1) goto error;
         if(bwRead((void*) &(cl->len[idx]), sizeof(uint32_t), 1, bw) != 1) goto error;
-        cl->chrom[idx] = strdup(chrom);
+        cl->chrom[idx] = bwStrdup(chrom);
         if(!(cl->chrom[idx])) goto error;
     }
 
@@ -299,7 +299,7 @@ void bwClose(bigWigFile_t *fp) {
     free(fp);
 }
 
-int bwIsBigWig(char *fname, CURLcode (*callBack) (CURL*)) {
+int bwIsBigWig(const char *fname, CURLcode (*callBack) (CURL*)) {
     uint32_t magic = 0;
     URL_t *URL = NULL;
 
@@ -312,15 +312,15 @@ int bwIsBigWig(char *fname, CURLcode (*callBack) (CURL*)) {
     return 0;
 }
 
-char *bbGetSQL(bigWigFile_t *bw) {
+char *bbGetSQL(bigWigFile_t *fp) {
     char *o = NULL;
     uint64_t len;
-    if(!bw->hdr->sqlOffset) return NULL;
-    len = bw->hdr->summaryOffset - bw->hdr->sqlOffset; //This includes the NULL terminator
+    if(!fp->hdr->sqlOffset) return NULL;
+    len = fp->hdr->summaryOffset - fp->hdr->sqlOffset; //This includes the NULL terminator
     o = malloc(sizeof(char) * len);
     if(!o) goto error;
-    if(bwSetPos(bw, bw->hdr->sqlOffset)) goto error;
-    if(bwRead((void*) o, len, 1, bw) != 1) goto error;
+    if(bwSetPos(fp, fp->hdr->sqlOffset)) goto error;
+    if(bwRead((void*) o, len, 1, fp) != 1) goto error;
     return o;
 
 error:
@@ -329,7 +329,7 @@ error:
     return NULL;
 }
 
-int bbIsBigBed(char *fname, CURLcode (*callBack) (CURL*)) {
+int bbIsBigBed(const char *fname, CURLcode (*callBack) (CURL*)) {
     uint32_t magic = 0;
     URL_t *URL = NULL;
 
@@ -342,7 +342,7 @@ int bbIsBigBed(char *fname, CURLcode (*callBack) (CURL*)) {
     return 0;
 }
 
-bigWigFile_t *bwOpen(char *fname, CURLcode (*callBack) (CURL*), const char *mode) {
+bigWigFile_t *bwOpen(const char *fname, CURLcode (*callBack) (CURL*), const char *mode) {
     bigWigFile_t *bwg = calloc(1, sizeof(bigWigFile_t));
     if(!bwg) {
         fprintf(stderr, "[bwOpen] Couldn't allocate space to create the output object!\n");
@@ -394,7 +394,7 @@ error:
     return NULL;
 }
 
-bigWigFile_t *bbOpen(char *fname, CURLcode (*callBack) (CURL*)) {
+bigWigFile_t *bbOpen(const char *fname, CURLcode (*callBack) (CURL*)) {
     bigWigFile_t *bb = calloc(1, sizeof(bigWigFile_t));
     if(!bb) {
         fprintf(stderr, "[bbOpen] Couldn't allocate space to create the output object!\n");
@@ -424,4 +424,15 @@ bigWigFile_t *bbOpen(char *fname, CURLcode (*callBack) (CURL*)) {
 error:
     bwClose(bb);
     return NULL;
+}
+
+
+//Implementation taken from musl:
+//https://git.musl-libc.org/cgit/musl/tree/src/string/strdup.c
+//License: https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT
+char* bwStrdup(const char *s) {
+	size_t l = strlen(s);
+	char *d = malloc(l+1);
+	if (!d) return NULL;
+	return memcpy(d, s, l+1);
 }
