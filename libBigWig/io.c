@@ -12,7 +12,7 @@
 size_t GLOBAL_DEFAULTBUFFERSIZE;
 
 #ifndef NOCURL
-uint64_t getContentLength(URL_t *URL) {
+uint64_t getContentLength(const URL_t *URL) {
     double size;
     if(curl_easy_getinfo(URL->x.curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &size) != CURLE_OK) {
         return 0;
@@ -98,7 +98,7 @@ size_t urlRead(URL_t *URL, void *buf, size_t bufSize) {
 #endif
 }
 
-size_t bwFillBuffer(void *inBuf, size_t l, size_t nmemb, void *pURL) {
+size_t bwFillBuffer(const void *inBuf, size_t l, size_t nmemb, void *pURL) {
     URL_t *URL = (URL_t*) pURL;
     void *p = URL->memBuf;
     size_t copied = l*nmemb;
@@ -158,7 +158,7 @@ CURLcode urlSeek(URL_t *URL, size_t pos) {
 #endif
 }
 
-URL_t *urlOpen(char *fname, CURLcode (*callBack)(CURL*), const char *mode) {
+URL_t *urlOpen(const char *fname, CURLcode (*callBack)(CURL*), const char *mode) {
     URL_t *URL = calloc(1, sizeof(URL_t));
     if(!URL) return NULL;
     char *url = NULL, *req = NULL;

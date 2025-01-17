@@ -68,3 +68,7 @@ void destroyBWOverlapBlock(bwOverlapBlock_t *b);
  * @return 0 on success
  */
 int bwFinalize(bigWigFile_t *fp);
+
+/// @cond SKIP
+char *bwStrdup(const char *s);
+/// @endcond

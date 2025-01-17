@@ -8,7 +8,7 @@
 
 //Returns -1 if there are no applicable levels, otherwise an integer indicating the most appropriate level.
 //Like Kent's library, this divides the desired bin size by 2 to minimize the effect of blocks overlapping multiple bins
-static int32_t determineZoomLevel(bigWigFile_t *fp, int basesPerBin) {
+static int32_t determineZoomLevel(const bigWigFile_t *fp, int basesPerBin) {
     int32_t out = -1;
     int64_t diff;
     uint32_t bestDiff = -1;
@@ -70,7 +70,7 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
 
     if(sz) {
         compressed = 1;
-        buf = malloc(sz); 
+        buf = malloc(sz);
     }
     sz = 0; //This is now the size of the compressed buffer
 
@@ -96,7 +96,7 @@ static struct vals_t *getVals(bigWigFile_t *fp, bwOverlapBlock_t *o, int i, uint
     }
 
     p = buf;
-    while(((uLongf) ((void*)p-buf)) < sz) {
+    while(((uLongf) ((char*)p - (char*)buf)) < sz) {
         vtid = p[0];
         vstart = p[1];
         vend = p[2];
@@ -420,7 +420,7 @@ static double intSum(bwOverlappingIntervals_t* ints, uint32_t start, uint32_t en
 }
 
 //Returns NULL on error, otherwise a double* that needs to be free()d
-double *bwStatsFromZoom(bigWigFile_t *fp, int32_t level, uint32_t tid, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
+static double *bwStatsFromZoom(bigWigFile_t *fp, int32_t level, uint32_t tid, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
     bwOverlapBlock_t *blocks = NULL;
     double *output = NULL;
     uint32_t pos = start, i, end2;
@@ -482,7 +482,7 @@ error:
     return NULL;
 }
 
-double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
+double *bwStatsFromFull(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
     bwOverlappingIntervals_t *ints = NULL;
     double *output = malloc(sizeof(double)*nBins);
     uint32_t i, pos = start, end2;
@@ -527,7 +527,7 @@ double *bwStatsFromFull(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t 
 
 //Returns a list of floats of length nBins that must be free()d
 //On error, NULL is returned
-double *bwStats(bigWigFile_t *fp, char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
+double *bwStats(bigWigFile_t *fp, const char *chrom, uint32_t start, uint32_t end, uint32_t nBins, enum bwStatsType type) {
     int32_t level = determineZoomLevel(fp, ((double)(end-start))/((int) nBins));
     uint32_t tid = bwGetTid(fp, chrom);
     if(tid == (uint32_t) -1) return NULL;
