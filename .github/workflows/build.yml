@@ -45,7 +45,7 @@ jobs:
     - name: Build sdist
       run: |
         python -m build --sdist
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v6
       with:
         name: pyBigWig-build
         path: |

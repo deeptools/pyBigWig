@@ -612,7 +612,8 @@ static PyObject *pyBwGetValues(pyBigWigFile_t *self, PyObject *args) {
     if(!hasEntries(self->bw)) {
 #ifdef WITHNUMPY
         if(outputNumpy == Py_True) {
-            return PyArray_SimpleNew(0, NULL, NPY_FLOAT);
+            const npy_intp arr[1] = {0};
+            return PyArray_SimpleNew(1, arr, NPY_FLOAT);
         } else {
 #endif
             return PyList_New(0);
