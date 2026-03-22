@@ -44,9 +44,9 @@ CURLcode urlFetchData(URL_t *URL, unsigned long bufSize) {
 
 //Read data into a buffer, ideally from a buffer already in memory
 //The loop is likely no longer needed.
-size_t url_fread(void *obuf, size_t obufSize, URL_t *URL) {
+size_t url_fread(char *obuf, size_t obufSize, URL_t *URL) {
     size_t remaining = obufSize, fetchSize;
-    void *p = obuf;
+    char *p = obuf;
     CURLcode rv;
 
     while(remaining) {
@@ -55,7 +55,7 @@ size_t url_fread(void *obuf, size_t obufSize, URL_t *URL) {
             if(rv != CURLE_OK) {
                 fprintf(stderr, "[url_fread] urlFetchData (A) returned %s\n", curl_easy_strerror(rv));
                 return 0;
-            }  
+            }
         } else if(URL->bufLen < URL->bufPos + remaining) { //Copy the remaining buffer and reload the buffer as needed
             p = memcpy(p, URL->memBuf+URL->bufPos, URL->bufLen - URL->bufPos);
             if(!p) return 0;
@@ -86,7 +86,7 @@ size_t url_fread(void *obuf, size_t obufSize, URL_t *URL) {
 
 //Returns the number of bytes requested or a smaller number on error
 //Note that in the case of remote files, the actual amount read may be less than the return value!
-size_t urlRead(URL_t *URL, void *buf, size_t bufSize) {
+size_t urlRead(URL_t *URL, char *buf, size_t bufSize) {
 #ifndef NOCURL
     if(URL->type==0) {
         return fread(buf, bufSize, 1, URL->x.fp)*bufSize;
@@ -98,9 +98,9 @@ size_t urlRead(URL_t *URL, void *buf, size_t bufSize) {
 #endif
 }
 
-size_t bwFillBuffer(const void *inBuf, size_t l, size_t nmemb, void *pURL) {
+size_t bwFillBuffer(const char *inBuf, size_t l, size_t nmemb, char *pURL) {
     URL_t *URL = (URL_t*) pURL;
-    void *p = URL->memBuf;
+    char *p = URL->memBuf;
     size_t copied = l*nmemb;
     if(!p) return 0;
 
@@ -230,7 +230,7 @@ URL_t *urlOpen(const char *fname, CURLcode (*callBack)(CURL*), const char *mode)
                 fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_WRITEFUNCTION!\n");
                 goto error;
             }
-            if(curl_easy_setopt(URL->x.curl, CURLOPT_WRITEDATA, (void*)URL) != CURLE_OK) {
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_WRITEDATA, (char*)URL) != CURLE_OK) {
                 fprintf(stderr, "[urlOpen] Couldn't set CURLOPT_WRITEDATA!\n");
                 goto error;
             }
