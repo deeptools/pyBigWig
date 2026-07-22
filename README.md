@@ -133,6 +133,8 @@ If the start and end positions are omitted then the entire chromosome is used:
     >>> bw.stats("1")
     [1.3351851569281683]
 
+> For type="mean", bases with no associated bigWig value are excluded from the denominator. To compute a mean over the full queried interval with missing bases treated as zero, use values() and replace NaN with zero before averaging.
+
 ### A note on statistics and zoom levels
 
 > A note to the lay reader: This section is rather technical and included only for the sake of completeness. The summary is that if your needs require exact mean/max/etc. summary values for an interval or intervals and that a small trade-off in speed is acceptable, that you should use the `exact=True` option in the `stats()` function.
