@@ -46,6 +46,7 @@ jobs:
         python -m pip install --upgrade cibuildwheel      
     - name: Build wheel(s)
       run: |
+        which cc
         python -m cibuildwheel --output-dir wheelhouse
     - name: Build sdist
       run: |
