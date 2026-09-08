@@ -223,7 +223,7 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     int errVal = 0;
 
     if(!PyArg_ParseTuple(pyFname, "s|s", &fname, &mode)) goto error;
-    errVal += 1
+    errVal += 1;
 
     //Open the local/remote file
     if(strchr(mode, 'w') != NULL || bwIsBigWig(fname, NULL)) {
@@ -235,11 +235,11 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
         fprintf(stderr, "[pyBwOpen] bw is NULL!\n");
         goto error;
     }
-    errVal += 1
+    errVal += 1;
     if(!mode || !strchr(mode, 'w')) {
         if(!bw->cl) goto error;
     }
-    errVal += 1
+    errVal += 1;
 
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
     if(!pybw) {
