@@ -12,6 +12,11 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+    - name: Set up GCC
+      uses: egor-tensin/setup-gcc@v2
+      with:
+        version: 12
+        platform: x64
     - name: Install build prerequisites
       if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
       run: |
