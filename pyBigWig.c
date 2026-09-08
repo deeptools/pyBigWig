@@ -220,8 +220,10 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     char *mode = "r";
     pyBigWigFile_t *pybw;
     bigWigFile_t *bw = NULL;
+    int errVal = 0;
 
     if(!PyArg_ParseTuple(pyFname, "s|s", &fname, &mode)) goto error;
+    errVal += 1
 
     //Open the local/remote file
     if(strchr(mode, 'w') != NULL || bwIsBigWig(fname, NULL)) {
@@ -233,9 +235,11 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
         fprintf(stderr, "[pyBwOpen] bw is NULL!\n");
         goto error;
     }
+    errVal += 1
     if(!mode || !strchr(mode, 'w')) {
         if(!bw->cl) goto error;
     }
+    errVal += 1
 
     pybw = PyObject_New(pyBigWigFile_t, &bigWigFile);
     if(!pybw) {
@@ -252,7 +256,15 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
 
 error:
     if(bw) bwClose(bw);
-    PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening!");
+    if(errVal == 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening! Were the file name and mode not strings?");
+    } else if(errVal == 1) {
+        PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening! Unknown error during file opening.");
+    } else if(errVal == 2) {
+        PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening! The file seems to be missing a chromosome list!");
+    } else if(errVal == 3) {
+        PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening! Out of memory?");
+    }
     return NULL;
 }
 
