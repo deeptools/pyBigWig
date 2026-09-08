@@ -47,6 +47,7 @@ jobs:
     - name: Build wheel(s)
       run: |
         which cc
+        cc --version
         python -m cibuildwheel --output-dir wheelhouse
     - name: Build sdist
       run: |
