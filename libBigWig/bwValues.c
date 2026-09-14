@@ -487,7 +487,7 @@ bbOverlappingEntries_t *bbGetOverlappingEntriesCore(bigWigFile_t *fp, bwOverlapB
     uint64_t i;
     int compressed = 0, rv, slen;
     uLongf sz = fp->hdr->bufSize, tmp = 0;
-    void *buf = NULL, *bufEnd = NULL, *compBuf = NULL;
+    void *buf = NULL, *bufBase = NULL, *bufEnd = NULL, *compBuf = NULL;
     uint32_t entryTid = 0, start = 0, end;
     char *str;
     bbOverlappingEntries_t *output = calloc(1, sizeof(bbOverlappingEntries_t));
@@ -499,7 +499,7 @@ bbOverlappingEntries_t *bbGetOverlappingEntriesCore(bigWigFile_t *fp, bwOverlapB
 
     if(sz) {
         compressed = 1;
-        buf = malloc(sz);
+        bufBase = buf = malloc(sz);
     }
     sz = 0; //This is now the size of the compressed buffer
 
@@ -544,15 +544,14 @@ bbOverlappingEntries_t *bbGetOverlappingEntriesCore(bigWigFile_t *fp, bwOverlapB
         buf = (char*)bufEnd - tmp; //reset the buffer pointer
     }
 
-    if(compressed && buf) free(buf);
+    if(compressed && bufBase) free(bufBase);
     if(compBuf) free(compBuf);
     return output;
 
 error:
     fprintf(stderr, "[bbGetOverlappingEntriesCore] Got an error\n");
-    buf = (char*)bufEnd - tmp;
     if(output) bbDestroyOverlappingEntries(output);
-    if(compressed && buf) free(buf);
+    if(compressed && buf) free(bufBase);
     if(compBuf) free(compBuf);
     return NULL;
 }
