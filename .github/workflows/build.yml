@@ -38,7 +38,6 @@ jobs:
         python -m pip install --upgrade build numpy
     - name: Install cibuildwheel
       run: |
-        CIBW_BEFORE_BUILD='which gcc && gcc --version'
         python -m pip install --upgrade cibuildwheel      
     - name: Build wheel(s)
       run: |
