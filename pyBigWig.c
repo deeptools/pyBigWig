@@ -221,8 +221,32 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
     pyBigWigFile_t *pybw;
     bigWigFile_t *bw = NULL;
     int errVal = 0;
+    PyObject *p = NULL, *strp = NULL;
 
-    if(!PyArg_ParseTuple(pyFname, "s|s", &fname, &mode)) goto error;
+    if(!PyArg_ParseTuple(pyFname, "s|s", &fname, &mode)) {
+        if(PyTuple_Size(pyFname) < 1) {
+            PyErr_SetString(PyExc_TypeError, "You must provide at least a file name!");
+            return NULL;
+        }
+        p = PyTuple_GetItem(pyFname, 0);
+        strp = PyObject_Str(p);
+        if (strp == NULL) {
+            PyErr_SetString(PyExc_TypeError, "The file name cannot be coerced to a string!");
+            goto error;
+        }
+        fname = PyUnicode_AsUTF8(strp);
+        Py_DECREF(strp);
+        if(PyTuple_Size(pyFname) > 1) {
+            p = PyTuple_GetItem(pyFname, 1);
+            strp = PyObject_Str(p);
+            if (strp == NULL) {
+                PyErr_SetString(PyExc_TypeError, "The mode cannot be coerced to a string!");
+                goto error;
+            }
+            mode = PyUnicode_AsUTF8(strp);
+            Py_DECREF(strp);
+        }
+    }
     errVal += 1;
 
     //Open the local/remote file
@@ -256,9 +280,7 @@ PyObject* pyBwOpen(PyObject *self, PyObject *pyFname) {
 
 error:
     if(bw) bwClose(bw);
-    if(errVal == 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening! Were the file name and mode not strings?");
-    } else if(errVal == 1) {
+    if(errVal == 1) {
         PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening! Unknown error during file opening.");
     } else if(errVal == 2) {
         PyErr_SetString(PyExc_RuntimeError, "Received an error during file opening! The file seems to be missing a chromosome list!");
