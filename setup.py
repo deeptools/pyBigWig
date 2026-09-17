@@ -1,35 +1,46 @@
 #!/usr/bin/env python
+import os
 from setuptools import setup, Extension
-from distutils import sysconfig
+import sysconfig
 from pathlib import Path
 import subprocess
 import glob
 import sys
 
-srcs = [x for x in 
+srcs = [x for x in
     glob.glob("libBigWig/*.c")]
 srcs.append("pyBigWig.c")
-
-libs=["m", "z"]
+if sys.platform == "win32":
+    libs = ["zlib"]
+else:
+    libs=["m", "z"]
 
 # do not link to python on mac, see https://github.com/deeptools/pyBigWig/issues/58
 if 'dynamic_lookup' not in (sysconfig.get_config_var('LDSHARED') or ''):
-    if sysconfig.get_config_vars('BLDLIBRARY') is not None:
+    if sysconfig.get_config_vars('BLDLIBRARY') is not None and sysconfig.get_config_vars('BLDLIBRARY') != [None]:
         #Note the "-l" prefix!
         for e in sysconfig.get_config_vars('BLDLIBRARY')[0].split():
             if e[0:2] == "-l":
                 libs.append(e[2:])
+    elif sys.platform == "win32":
+        libs.append(f"python{sys.version_info[0]}{sys.version_info[1]}")
     elif sys.version_info[0] >= 3 and sys.version_info[1] >= 3:
         libs.append("python%i.%im" % (sys.version_info[0], sys.version_info[1]))
     else:
         libs.append("python%i.%i" % (sys.version_info[0], sys.version_info[1]))
 
-additional_libs = [sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LIBPL")]
+if sys.platform == "win32":
+    additional_libs = [sysconfig.get_config_var("installed_platbase")]
+else:
+    additional_libs = [sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LIBPL")]
 
 defines = []
 try:
-    foo, _ = subprocess.Popen(['curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
-    libs.append("curl")
+    foo, _ = subprocess.Popen(['sh', '-c', 'curl-config', '--libs'], stdout=subprocess.PIPE).communicate()
+    if sys.platform == "win32":
+        libs.append("libcurl")
+    else:
+        libs.append("curl")
     foo = foo.decode().strip().split()
 except:
     foo = []
@@ -58,10 +69,23 @@ try:
 except ImportError:
     pass
 
-module1 = Extension('pyBigWig',
+if sys.platform == "win32":
+    defines.append(("_CRT_SECURE_NO_WARNINGS", None))
+    include_dirs.extend([os.environ.get("ZLIB_ROOT") + "/include", "win32", "libBigWig"])
+    additional_libs.append(os.environ.get("ZLIB_ROOT") + "/lib")
+    module1 = Extension(
+        "pyBigWig",
+        sources=srcs,
+        libraries=libs,
+        library_dirs=additional_libs,
+        define_macros=defines,
+        include_dirs=include_dirs
+    )
+else:
+    module1 = Extension('pyBigWig',
                     sources = srcs,
                     libraries = libs,
-                    library_dirs = additional_libs, 
+                    library_dirs = additional_libs,
                     define_macros = defines,
                     include_dirs = include_dirs)
 
