@@ -1858,8 +1858,8 @@ static PyObject *pyBBGetEntries(pyBigWigFile_t *self, PyObject *args, PyObject *
         return NULL;
     }
     if(!o->l) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        bbDestroyOverlappingEntries(o);
+        return PyList_New(0);
     }
 
     ret = PyList_New(o->l);
