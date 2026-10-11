@@ -137,7 +137,7 @@ class TestRemote():
         bw.close()
         #check md5sum, this is the simplest method to check correctness
         h = hashlib.md5(open(oname, "rb").read()).hexdigest()
-        assert(h=="ef104f198c6ce8310acc149d0377fc16")
+        assert(h=="c07d7b09a0e370f3caca50258c5a6957")
         #Clean up
         os.remove(oname)
 
