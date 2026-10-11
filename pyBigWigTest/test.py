@@ -242,6 +242,9 @@ class TestBigBed():
         assert(o == expected)
         o = bb.entries('chr1',np.int64(10000000),np.int64(10020000))
         assert(o == expected)
+        #A region with no entries returns an empty list, not None
+        o = bb.entries('chr7',0,1000)
+        assert(o == [])
         bb.close()
 
 class TestNumpy():
