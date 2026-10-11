@@ -551,7 +551,7 @@ bbOverlappingEntries_t *bbGetOverlappingEntriesCore(bigWigFile_t *fp, bwOverlapB
 error:
     fprintf(stderr, "[bbGetOverlappingEntriesCore] Got an error\n");
     if(output) bbDestroyOverlappingEntries(output);
-    if(compressed && buf) free(bufBase);
+    if(compressed && bufBase) free(bufBase);
     if(compBuf) free(compBuf);
     return NULL;
 }

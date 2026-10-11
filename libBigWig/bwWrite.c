@@ -544,7 +544,7 @@ int bwAddIntervalSpanSteps(bigWigFile_t *fp, const char *chrom, uint32_t start, 
         updateStats(fp, wb->span, values[i]);
         wb->l += 4;
     }
-    wb->end = wb->start + (wb->l>>2) * step;
+    wb->end = wb->start + ((wb->l-24)>>2) * step;
 
     return 0;
 }
@@ -567,7 +567,7 @@ int bwAppendIntervalSpanSteps(bigWigFile_t *fp, const float *values, uint32_t n)
         updateStats(fp, wb->span, values[i]);
         wb->l += 4;
     }
-    wb->end = wb->start + (wb->l>>2) * wb->step;
+    wb->end = wb->start + ((wb->l-24)>>2) * wb->step;
 
     return 0;
 }

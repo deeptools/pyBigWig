@@ -209,6 +209,11 @@ URL_t *urlOpen(const char *fname, CURLcode (*callBack)(CURL*), const char *mode)
                 fprintf(stderr, "[urlOpen] Failed instructing curl to use any HTTP authentication it finds to be suitable!\n");
                 goto error;
             }
+            // set user-agent
+            if(curl_easy_setopt(URL->x.curl, CURLOPT_USERAGENT, "libBigWig") != CURLE_OK) {
+                fprintf(stderr, "[urlOpen] Failed instructing curl to use libBigWig as a user-agent!\n");
+                goto error;
+            }
             //Follow redirects
             if(curl_easy_setopt(URL->x.curl, CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
                 fprintf(stderr, "[urlOpen] Failed instructing curl to follow redirects!\n");
