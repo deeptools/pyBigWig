@@ -23,7 +23,7 @@ int bwSetPos(bigWigFile_t *fp, size_t pos) {
 }
 
 //returns the number of full members read (nmemb on success, something less on error)
-size_t bwRead(void *data, size_t sz, size_t nmemb, bigWigFile_t *fp) {
+size_t bwRead(char *data, size_t sz, size_t nmemb, bigWigFile_t *fp) {
     size_t i, rv;
     for(i=0; i<nmemb; i++) {
         rv = urlRead(fp->URL, data+i*sz, sz);
