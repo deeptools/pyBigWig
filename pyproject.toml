@@ -7,7 +7,6 @@ authors = [{name = "Devon P. Ryan", email = "dryan79@gmail.com"}]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
-  "License :: OSI Approved",
   "Programming Language :: C",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
@@ -23,9 +22,7 @@ name = "pyBigWig"
 version = "0.3.29"
 readme = "README.md"
 requires-python = ">=3.9"
-
-[project.license]
-text = "MIT"
+license = "MIT"
 
 [project.urls]
 "Bug Tracker" = "https://github.com/deeptools/pyBigWig/issues"
