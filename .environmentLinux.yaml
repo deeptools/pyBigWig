@@ -2,12 +2,11 @@ name: foo
 channels:
   - conda-forge
   - bioconda
-  - default
 dependencies:
   - gcc_linux-64
   - curl
   - zlib
-  - python = 3.10
+  - python 3.10
   - pip
   - numpy
   - pytest
