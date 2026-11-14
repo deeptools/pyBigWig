@@ -6,7 +6,7 @@ dependencies:
   - gcc_linux-64
   - curl
   - zlib
-  - python 3.10
+  - python 3.9
   - pip
   - numpy
   - pytest
