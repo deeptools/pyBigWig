@@ -223,10 +223,11 @@ error:
 
 //Returns NULL and sets nOverlaps to >0 on error, otherwise nOverlaps is the number of file offsets returned
 //The output needs to be free()d if not NULL (likewise with *sizes)
-static bwOverlapBlock_t *overlapsNonLeaf(bigWigFile_t *fp, bwRTreeNode_t *node, uint32_t tid, uint32_t start, uint32_t end) {
+static bwOverlapBlock_t *overlapsNonLeaf(bigWigFile_t *fp, bwRTreeNode_t *node, uint32_t tid, uint32_t start, uint32_t end, int depth) {
     uint16_t i;
     bwOverlapBlock_t *nodeBlocks, *output = calloc(1, sizeof(bwOverlapBlock_t));
     if(!output) return NULL;
+    if(depth > 64) goto error;
 
     for(i=0; i<node->nChildren; i++) {
         if(tid < node->chrIdxStart[i]) break;
@@ -249,7 +250,7 @@ static bwOverlapBlock_t *overlapsNonLeaf(bigWigFile_t *fp, bwRTreeNode_t *node, 
         if(node->x.child[i]->isLeaf) { //leaf
             nodeBlocks = overlapsLeaf(node->x.child[i], tid, start, end);
         } else { //non-leaf
-            nodeBlocks = overlapsNonLeaf(fp, node->x.child[i], tid, start, end);
+            nodeBlocks = overlapsNonLeaf(fp, node->x.child[i], tid, start, end, depth+1);
         }
 
         //The output is processed the same regardless of leaf/non-leaf
@@ -274,7 +275,7 @@ error:
 //The output must be free()d
 bwOverlapBlock_t *walkRTreeNodes(bigWigFile_t *bw, bwRTreeNode_t *root, uint32_t tid, uint32_t start, uint32_t end) {
     if(root->isLeaf) return overlapsLeaf(root, tid, start, end);
-    return overlapsNonLeaf(bw, root, tid, start, end);
+    return overlapsNonLeaf(bw, root, tid, start, end, 0);
 }
 
 //In reality, a hash or some sort of tree structure is probably faster...
@@ -649,6 +650,7 @@ void bwIteratorDestroy(bwOverlapIterator_t *iter) {
 bwOverlapIterator_t *bwIteratorNext(bwOverlapIterator_t *iter) {
     uint64_t n, *offset, *size;
     bwOverlapBlock_t *blocks = iter->blocks;
+    if(!blocks) goto error;
 
     if(iter->intervals) {
         bwDestroyOverlappingIntervals(iter->intervals);
