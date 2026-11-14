@@ -16,7 +16,7 @@ jobs:
         with:
           activate-environment: foo
           environment-file: .environmentLinux.yaml
-          python-version: 3.10
+          python-version: 3.9
           auto-activate-base: false
       - run: |
           pip install .
