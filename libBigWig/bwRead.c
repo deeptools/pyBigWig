@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 
-static uint64_t readChromBlock(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize);
+static uint64_t readChromBlock(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize, int depth);
 
 //Return the position in the file
 long bwTell(bigWigFile_t *fp) {
@@ -193,6 +193,7 @@ static uint64_t readChromLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t valueS
     for(i=0; i<nVals; i++) {
         if(bwRead((void*) chrom, sizeof(char), valueSize, bw) != valueSize) goto error;
         if(bwRead((void*) &idx, sizeof(uint32_t), 1, bw) != 1) goto error;
+        if(idx >= cl->nKeys) goto error;
         if(bwRead((void*) &(cl->len[idx]), sizeof(uint32_t), 1, bw) != 1) goto error;
         cl->chrom[idx] = bwStrdup(chrom);
         if(!(cl->chrom[idx])) goto error;
@@ -206,7 +207,7 @@ error:
     return -1;
 }
 
-static uint64_t readChromNonLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize) {
+static uint64_t readChromNonLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize, int depth) {
     uint64_t offset , rv = 0, previous;
     uint16_t nVals, i;
 
@@ -217,15 +218,19 @@ static uint64_t readChromNonLeaf(bigWigFile_t *bw, chromList_t *cl, uint32_t key
         if(bwSetPos(bw, previous)) return -1;
         if(bwRead((void*) &offset, sizeof(uint64_t), 1, bw) != 1) return -1;
         if(bwSetPos(bw, offset)) return -1;
-        rv += readChromBlock(bw, cl, keySize);
+        uint64_t r = readChromBlock(bw, cl, keySize, depth+1);
+        if(r == (uint64_t) -1) return r;
+        rv += r;
         previous += 8 + keySize;
     }
 
     return rv;
 }
 
-static uint64_t readChromBlock(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize) {
+static uint64_t readChromBlock(bigWigFile_t *bw, chromList_t *cl, uint32_t keySize, int depth) {
     uint8_t isLeaf, padding;
+
+    if(depth > 64) return -1;
 
     if(bwRead((void*) &isLeaf, sizeof(uint8_t), 1, bw) != 1) return -1;
     if(bwRead((void*) &padding, sizeof(uint8_t), 1, bw) != 1) return -1;
@@ -233,7 +238,7 @@ static uint64_t readChromBlock(bigWigFile_t *bw, chromList_t *cl, uint32_t keySi
     if(isLeaf) {
         return readChromLeaf(bw, cl, keySize);
     } else { //I've never actually observed one of these, which is good since they're pointless
-        return readChromNonLeaf(bw, cl, keySize);
+        return readChromNonLeaf(bw, cl, keySize, depth);
     }
 }
 
@@ -265,7 +270,7 @@ static chromList_t *bwReadChromList(bigWigFile_t *bw) {
     if(bwRead((void*) &magic, sizeof(uint32_t), 1, bw) != 1) goto error;
 
     //Read in the blocks
-    rv = readChromBlock(bw, cl, keySize);
+    rv = readChromBlock(bw, cl, keySize, 0);
     if(rv == (uint64_t) -1) goto error;
     if(rv != itemCount) goto error;
 
