@@ -42,7 +42,7 @@ typedef struct {
 #endif
         FILE *fp; /**<The FILE * file pointer for local files.**/
     } x; /**<A union holding curl and fp.*/
-    void *memBuf; /**<A void * pointing to memory of size bufSize.*/
+    char *memBuf; /**<A char * pointing to memory of size bufSize.*/
     size_t filePos; /**<Current position inside the file.*/
     size_t bufPos; /**<Curent position inside the buffer.*/
     size_t bufSize; /**<The size of the buffer.*/
@@ -65,11 +65,11 @@ typedef struct {
  *
  *  @warning Note that on error, URL for remote files is left in an unusable state. You can get around this by running urlSeek() to a position outside of the range held by the internal buffer.
  */
-size_t urlRead(URL_t *URL, void *buf, size_t bufSize);
+size_t urlRead(URL_t *URL, char *buf, size_t bufSize);
 
 /*!
  *  @brief Seeks to a given position in a local or remote file.
- * 
+ *
  *  For local files, this will set the file position indicator for the file pointer to the desired position. For remote files, it sets the position to start downloading data for the next urlRead(). Note that for remote files that running urlSeek() with a pos within the current buffer will simply modify the internal offset.
  *
  *  @param URL A URL_t * pointing to a valid opened file or remote URL.
