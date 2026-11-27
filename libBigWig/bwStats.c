@@ -374,8 +374,8 @@ static double intCoverage(bwOverlappingIntervals_t* ints, uint32_t start, uint32
 }
 
 static double blockSum(bigWigFile_t *fp, bwOverlapBlock_t *blocks, uint32_t tid, uint32_t start, uint32_t end) {
-    uint32_t i, j, sizeUse;
-    double o = 0.0;
+    uint32_t i, j;
+    double o = 0.0, coverage = 0.0;
     struct vals_t *v = NULL;
 
     if(!blocks->n) return strtod("NaN", NULL);
@@ -385,15 +385,14 @@ static double blockSum(bigWigFile_t *fp, bwOverlapBlock_t *blocks, uint32_t tid,
         v = getVals(fp, blocks, i, tid, start, end);
         if(!v) goto error;
         for(j=0; j<v->n; j++) {
-            //Multiply the block average by min(bases covered, block overlap with interval)
-            sizeUse = v->vals[j]->scalar;
-            if(sizeUse > v->vals[j]->nBases) sizeUse = v->vals[j]->nBases;
-            o+= (v->vals[j]->sum * sizeUse) / v->vals[j]->nBases;
+            o += v->vals[j]->sum * v->vals[j]->scalar;
+            coverage += v->vals[j]->nBases * v->vals[j]->scalar;
         }
         destroyVals_t(v);
+        v = NULL;
     }
 
-    if(o == 0.0) return strtod("NaN", NULL);
+    if(!coverage) return strtod("NaN", NULL);
     return o;
 
 error:
