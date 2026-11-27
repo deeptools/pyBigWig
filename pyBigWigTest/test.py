@@ -44,6 +44,13 @@ class TestRemote():
 
     def doSum(self, bw):
         assert(bw.stats("1", 100, 151, type="sum", nBins=2) == [35.0, 36.5])
+        # Zoom-level sum (bin width >= 2 * zoom level 400 in test.bw)
+        assert(np.isclose(bw.stats("1", 0, 1000, type="sum")[0], 72.1, rtol=1e-5))
+        assert(np.isclose(bw.stats("1", type="sum")[0], 72.1, rtol=1e-5))
+        assert(np.isclose(bw.stats("10", 0, 1000, type="sum")[0], 200.0, rtol=1e-5))
+        assert(np.isclose(bw.stats("10", type="sum")[0], 200.0, rtol=1e-5))
+        # Partial zoom-block overlap: zoom record [200, 600) has sum=200, scalar=0.5 -> 100.0
+        assert(np.isclose(bw.stats("10", 400, 1400, type="sum")[0], 100.0, rtol=1e-5))
 
     def doWrite(self, bw):
         ofile = tempfile.NamedTemporaryFile(delete=False)
@@ -331,3 +338,61 @@ class TestNumpy():
             np.array(bw.stats("1", 0, 20, "mean", 5), dtype=np.float64),
             equal_nan=True
         )
+
+
+class TestZoomSum():
+    def testZoomSum(self):
+        ofile = tempfile.NamedTemporaryFile(suffix=".bw", delete=False)
+        oname = ofile.name
+        ofile.close()
+        try:
+            bw = pyBigWig.open(oname, "w")
+            bw.addHeader([("chr1", 100000), ("chr2", 10000)], maxZooms=10)
+            s_pos = np.arange(0, 10000, 10, dtype=np.int64)
+            s_cancel_pos = np.arange(20000, 25000, 10, dtype=np.int64)
+            s_cancel_neg = np.arange(25000, 30000, 10, dtype=np.int64)
+            s_zero = np.arange(40000, 50000, 10, dtype=np.int64)
+            s_neg = np.arange(60000, 70000, 10, dtype=np.int64)
+            starts = np.concatenate([s_pos, s_cancel_pos, s_cancel_neg, s_zero, s_neg])
+            ends = starts + 10
+            values = np.concatenate([
+                np.full(len(s_pos), 2.0, dtype=np.float32),
+                np.full(len(s_cancel_pos), 3.0, dtype=np.float32),
+                np.full(len(s_cancel_neg), -3.0, dtype=np.float32),
+                np.full(len(s_zero), 0.0, dtype=np.float32),
+                np.full(len(s_neg), -2.5, dtype=np.float32),
+            ])
+            bw.addEntries(np.array(["chr1"] * len(starts)), starts, ends=ends, values=values)
+            bw.addEntries(["chr2"], [0], ends=[10], values=[1.0])
+            bw.close()
+
+            bw = pyBigWig.open(oname)
+            # Full positive window
+            assert np.isclose(bw.stats("chr1", 0, 10000, type="sum")[0], 20000.0, rtol=1e-5)
+            # Partial boundary zoom-block overlaps
+            assert np.isclose(bw.stats("chr1", 50, 9950, type="sum")[0], 19800.0, rtol=1e-5)
+            # Multi-bin with partial overlaps at every bin boundary (numpy=True and False)
+            bins_list = bw.stats("chr1", 0, 10000, type="sum", nBins=10)
+            assert np.allclose(bins_list, [2000.0] * 10, rtol=1e-5)
+            if pyBigWig.numpy:
+                bins_np = bw.stats("chr1", 0, 10000, type="sum", nBins=10, numpy=True)
+                assert np.allclose(bins_np, np.full(10, 2000.0), rtol=1e-5)
+            # Covered regions summing to 0.0 must return 0.0, not None/NaN
+            assert bw.stats("chr1", 20000, 30000, type="sum") == [0.0]
+            assert bw.stats("chr1", 40000, 50000, type="sum") == [0.0]
+            # Negative signal window
+            assert np.isclose(bw.stats("chr1", 60000, 70000, type="sum")[0], -25000.0, rtol=1e-5)
+            # Uncovered region must still return None / NaN
+            assert bw.stats("chr1", 80000, 90000, type="sum") == [None]
+            if pyBigWig.numpy:
+                assert np.isnan(bw.stats("chr1", 80000, 90000, type="sum", numpy=True)[0])
+            # Consistency identity: sum == mean * cov * (end - start)
+            for start, end in [(0, 10000), (50, 9950), (60000, 70000)]:
+                s_val = bw.stats("chr1", start, end, type="sum")[0]
+                m_val = bw.stats("chr1", start, end, type="mean")[0]
+                c_val = bw.stats("chr1", start, end, type="cov")[0]
+                assert np.isclose(s_val, m_val * c_val * (end - start), rtol=1e-5)
+            bw.close()
+        finally:
+            if os.path.exists(oname):
+                os.remove(oname)
